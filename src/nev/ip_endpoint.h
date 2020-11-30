@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <stdint.h>  // uint16_t
 
 #include <string>
 
@@ -34,6 +34,10 @@ class NEV_EXPORT IPEndPoint {
   //    输出：实际拷贝至 address 的字节数
   bool toSockAddr(struct sockaddr* address,
                   socklen_t* address_length) const WARN_UNUSED_RESULT;
+
+  // 从 sockaddr 结构体初始化
+  bool fromSockAddr(const struct sockaddr* address,
+                    socklen_t address_length) WARN_UNUSED_RESULT;
 
   // 正常返回类似 "127.0.0.1:80" 的字符串，当IP地址非法时返回空串。
   std::string toString() const;

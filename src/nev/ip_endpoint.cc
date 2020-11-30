@@ -8,7 +8,6 @@
 
 #if defined(OS_WIN)
 #include <winsock2.h>
-#include <ws2bth.h>
 #elif defined(OS_POSIX)
 #include <netinet/in.h>
 #endif
@@ -23,6 +22,27 @@ namespace nev {
 namespace {
 
 const socklen_t kSockaddrInSize = sizeof(struct sockaddr_in);
+
+// Extracts the address and port portions of a sockaddr.
+bool GetIPAddressFromSockAddr(const struct sockaddr* sock_addr,
+                              socklen_t sock_addr_len,
+                              const uint8_t** address,
+                              size_t* address_len,
+                              uint16_t* port) {
+  if (sock_addr->sa_family == AF_INET) {
+    if (sock_addr_len < static_cast<socklen_t>(sizeof(struct sockaddr_in)))
+      return false;
+    const struct sockaddr_in* addr =
+        reinterpret_cast<const struct sockaddr_in*>(sock_addr);
+    *address = reinterpret_cast<const uint8_t*>(&addr->sin_addr);
+    *address_len = IPAddress::kIPv4AddressSize;
+    if (port)
+      *port = base::NetToHost16(addr->sin_port);
+    return true;
+  }
+
+  return false;  // Unrecognized |sa_family|.
+}
 
 }  // namespace
 
@@ -58,6 +78,23 @@ bool IPEndPoint::toSockAddr(struct sockaddr* address,
     default:
       return false;
   }
+  return true;
+}
+
+bool IPEndPoint::fromSockAddr(const struct sockaddr* sock_addr,
+                              socklen_t sock_addr_len) {
+  DCHECK(sock_addr);
+
+  const uint8_t* address;
+  size_t address_len;
+  uint16_t port;
+  if (!GetIPAddressFromSockAddr(sock_addr, sock_addr_len, &address,
+                                &address_len, &port)) {
+    return false;
+  }
+
+  address_ = nev::IPAddress(address, address_len);
+  port_ = port;
   return true;
 }
 

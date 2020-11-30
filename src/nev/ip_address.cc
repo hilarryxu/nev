@@ -5,7 +5,6 @@
 #include "nev/ip_address.h"
 
 #include "base/strings/stringprintf.h"
-#include "nev/sys_addrinfo.h"
 
 namespace nev {
 
@@ -46,6 +45,22 @@ std::string IPAddress::toString() const {
 IPAddress IPAddress::IPv4Localhost() {
   static const uint8_t kLocalhostIPv4[] = {127, 0, 0, 1};
   return IPAddress(kLocalhostIPv4);
+}
+
+bool IPAddress::operator==(const IPAddress& that) const {
+  return ip_address_ == that.ip_address_;
+}
+
+bool IPAddress::operator!=(const IPAddress& that) const {
+  return ip_address_ != that.ip_address_;
+}
+
+bool IPAddress::operator<(const IPAddress& that) const {
+  if (ip_address_.size() != that.ip_address_.size()) {
+    return ip_address_.size() < that.ip_address_.size();
+  }
+
+  return ip_address_ < that.ip_address_;
 }
 
 std::string IPAddressToStringWithPort(const IPAddress& address, uint16_t port) {

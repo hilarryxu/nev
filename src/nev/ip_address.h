@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <stddef.h>
-#include <stdint.h>
+#include <stddef.h>  // size_t
+#include <stdint.h>  // uint8_t
 
 #include <string>
 #include <vector>
@@ -16,7 +16,7 @@ namespace nev {
 
 class NEV_EXPORT IPAddress {
  public:
-  enum : size_t { kIPv4AddressSize = 4, kIPv6AddressSize = 16 };
+  enum : size_t { kIPv4AddressSize = 4 };
 
   // 零长度的非法地址
   IPAddress();
