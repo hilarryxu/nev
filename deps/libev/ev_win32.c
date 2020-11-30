@@ -64,7 +64,7 @@ ev_pipe (int filedes [2])
   struct sockaddr_in adr2;
   int adr2_size = sizeof (adr2);
   SOCKET listener;
-  SOCKET sock [2] = { -1, -1 };
+  SOCKET sock [2] = { INVALID_SOCKET, INVALID_SOCKET };
 
   if ((listener = ev_tcp_socket ()) == INVALID_SOCKET)
     return -1;
@@ -145,7 +145,7 @@ fail:
 
 #define EV_HAVE_EV_TIME 1
 ev_tstamp
-ev_time (void)
+ev_time (void) EV_NOEXCEPT
 {
   FILETIME ft;
   ULARGE_INTEGER ui;

@@ -15,26 +15,17 @@ workspace "sln-nev"
      defines { "NDEBUG" }
      optimize "On"
 
-  project "ev"
-    kind "StaticLib"
-    language "C"
-    files {
-      "deps/libev/ev.c"
-    }
-    includedirs { "deps/libev" }
-
-    filter { "system:windows", "toolset:gcc" }
-      defines { "EV_CONFIG_H=\"libev_config_win.h\"" }
-      buildoptions { }
-
   project "nev"
     kind "StaticLib"
     language "C++"
-    files { "src/**.cc" }
+    files {
+      "deps/libev/ev_standalone.cc",
+      "src/**.cc",
+    }
     includedirs {
       "src",
       path.join(chromium_base_dir, "src"),
-      "deps",
+      "deps/libev",
     }
     libdirs {
       path.join(chromium_base_dir, "builddir"),
