@@ -1,0 +1,7 @@
+#!/bin/sh
+
+if [ -z $MSYSTEM ]; then
+  rg --files src/nev | rg -v 'libev_prelude' | xargs clang-format -i
+else
+  rg --path-separator '//' --files src/nev | rg -v 'libev_prelude' | xargs clang-format -i
+fi
