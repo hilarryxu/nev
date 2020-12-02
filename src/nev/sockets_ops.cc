@@ -6,10 +6,6 @@
 #include "nev/ip_endpoint.h"
 #include "nev/sockaddr_storage.h"
 
-#if defined(OS_WIN)
-#include "nev/winsock_init.h"
-#endif
-
 namespace nev {
 
 namespace {
@@ -20,12 +16,6 @@ void SetNonBlockAndCloseOnExec(SocketDescriptor sockfd) {
 }
 
 }  // namespace
-
-void sockets::EnsureSocketInit() {
-#if defined(OS_WIN)
-  EnsureWinsockInit();
-#endif  // OS_WIN
-}
 
 SocketDescriptor sockets::CreateOrDie() {
   SocketDescriptor sockfd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);

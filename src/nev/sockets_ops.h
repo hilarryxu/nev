@@ -9,9 +9,6 @@ class IPEndPoint;
 
 namespace sockets {
 
-// 初始化套接字环境
-void NEV_EXPORT EnsureSocketInit();
-
 // 创建一个阻塞的套接字，失败直接退出程序。
 SocketDescriptor NEV_EXPORT CreateOrDie();
 

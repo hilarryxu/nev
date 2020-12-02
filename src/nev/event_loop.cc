@@ -5,6 +5,8 @@
 #include "base/threading/thread_local.h"
 #include "base/time/time.h"
 
+#include "nev/libev_prelude.h"
+
 namespace nev {
 
 namespace {
@@ -16,8 +18,24 @@ base::LazyInstance<base::ThreadLocalPointer<EventLoop> >::Leaky lazy_tls_ptr =
 
 }  // namespace
 
+class EventLoop::Impl {
+ public:
+  Impl() { loop_ = static_cast<struct ev_loop*>(ev_loop_new(EVFLAG_AUTO)); }
+
+  ~Impl() { ev_loop_destroy(loop_); }
+
+  struct ev_loop* loop() {
+    return loop_;
+  }
+
+ private:
+  struct ev_loop* loop_;
+};
+
 EventLoop::EventLoop()
-    : looping_(false), thread_id_(base::PlatformThread::CurrentId()) {
+    : impl_(std::make_unique<Impl>()),
+      looping_(false),
+      thread_id_(base::PlatformThread::CurrentId()) {
   LOG(DEBUG) << "EventLoop created " << this << " in thread " << thread_id_;
 
   if (lazy_tls_ptr.Pointer()->Get() != nullptr) {
@@ -39,11 +57,16 @@ void EventLoop::loop() {
   assertInLoopThread();
   looping_ = true;
 
-  // 这里只是简单了休眠5秒
-  base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(5));
+  quit_ = false;
+  ev_run(impl_->loop(), 0);
 
   LOG(DEBUG) << "EventLoop " << this << " stop looping";
   looping_ = false;
+}
+
+void EventLoop::quit() {
+  quit_ = true;
+  ev_break(impl_->loop(), EVBREAK_ALL);
 }
 
 void EventLoop::abortNotInLoopThread() {

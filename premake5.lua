@@ -24,6 +24,7 @@ workspace "sln-nev"
     }
     includedirs {
       "src",
+      "include",
       path.join(chromium_base_dir, "src"),
       "deps/libev",
     }
@@ -47,9 +48,8 @@ local function demo(prj_name, prj_files)
 
     files(prj_files)
     includedirs {
-      "src",
+      "include",
       path.join(chromium_base_dir, "src"),
-      "deps/libev",
     }
     libdirs {
       "builddir",
@@ -65,3 +65,4 @@ end
 
 demo("test1")
 demo("test2")
+demo("test3")
