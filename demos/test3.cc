@@ -4,7 +4,7 @@
 using namespace nev;
 
 int main(int argc, char* argv[]) {
-  EnsureSocketInit();
+  EnsureNevInit();
 
   EventLoop loop;
 

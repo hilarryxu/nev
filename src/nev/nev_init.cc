@@ -8,7 +8,7 @@
 
 namespace nev {
 
-void EnsureSocketInit() {
+void EnsureNevInit() {
 #if defined(OS_WIN)
   EnsureWinsockInit();
 #endif  // OS_WIN

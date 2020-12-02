@@ -5,6 +5,6 @@
 namespace nev {
 
 // 初始化套接字环境
-void NEV_EXPORT EnsureSocketInit();
+void NEV_EXPORT EnsureNevInit();
 
 }  // namespace nev
