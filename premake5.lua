@@ -48,7 +48,7 @@ local function demo(prj_name, prj_files)
 
     files(prj_files)
     includedirs {
-      "src",
+      -- "src",
       "include",
       path.join(chromium_base_dir, "src"),
     }
@@ -67,4 +67,5 @@ end
 demo("test1")
 demo("test2")
 demo("test3")
-demo("test4")
+-- demo("test4")
+demo("test5")

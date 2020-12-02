@@ -7,6 +7,10 @@
 
 namespace nev {
 
+using std::placeholders::_1;
+using std::placeholders::_2;
+using std::placeholders::_3;
+
 class TcpConnection;
 
 using TcpConnectionSharedPtr = std::shared_ptr<TcpConnection>;
