@@ -37,6 +37,10 @@ workspace "sln-nev"
 
 
 local function demo(prj_name, prj_files)
+  if not prj_files then
+    prj_files = "demos/" .. prj_name .. ".cc"
+  end
+
   project(prj_name)
     kind "ConsoleApp"
     language "C++"
@@ -53,10 +57,11 @@ local function demo(prj_name, prj_files)
     }
 
     filter "system:windows"
+      defines { "CRT_MINGW", "MINGW_HAS_SECURE_API", "_POSIX_C_SOURCE" }
       links { "nev", "chromium_base", "ws2_32", "winmm" }
       linkoptions { "-Wall -static -static-libgcc -static-libstdc++" }
 end
 
 
-demo("client", { "demos/client.cc" })
-demo("server", { "demos/server.cc" })
+demo("test1")
+demo("test2")
