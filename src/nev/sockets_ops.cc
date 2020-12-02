@@ -10,7 +10,7 @@ namespace nev {
 
 namespace {
 
-void SetNonBlockAndCloseOnExec(SocketDescriptor sockfd) {
+void setNonBlockAndCloseOnExec(SocketDescriptor sockfd) {
   unsigned long on = 1;
   ::ioctlsocket(sockfd, FIONBIO, &on);
 }
@@ -32,7 +32,7 @@ SocketDescriptor sockets::CreateNonblockingOrDie() {
     LOG(FATAL) << "sockets::CreateNonblockingOrDie";
   }
 
-  SetNonBlockAndCloseOnExec(sockfd);
+  setNonBlockAndCloseOnExec(sockfd);
   return sockfd;
 }
 
@@ -89,7 +89,7 @@ SocketDescriptor sockets::Accept(SocketDescriptor sockfd,
     *address = ip_end_point;
 
     if (nonblocking)
-      SetNonBlockAndCloseOnExec(new_socket);
+      setNonBlockAndCloseOnExec(new_socket);
   }
   return new_socket;
 }
@@ -100,6 +100,10 @@ ssize_t sockets::Read(SocketDescriptor sockfd, void* buf, size_t count) {
 
 ssize_t sockets::Write(SocketDescriptor sockfd, const void* buf, size_t count) {
   return ::send(sockfd, (const char*)buf, count, 0);
+}
+
+void sockets::ShutdownWrite(SocketDescriptor sockfd) {
+  ::shutdown(sockfd, SD_SEND);
 }
 
 void sockets::Close(SocketDescriptor sockfd) {

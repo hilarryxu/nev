@@ -25,6 +25,7 @@ ssize_t NEV_EXPORT Read(SocketDescriptor sockfd, void* buf, size_t count);
 ssize_t NEV_EXPORT Write(SocketDescriptor sockfd,
                          const void* buf,
                          size_t count);
+void NEV_EXPORT ShutdownWrite(SocketDescriptor sockfd);
 void NEV_EXPORT Close(SocketDescriptor sockfd);
 
 int NEV_EXPORT GetSocketError(SocketDescriptor sockfd);

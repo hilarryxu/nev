@@ -13,6 +13,7 @@ Acceptor::Acceptor(EventLoop* loop, const IPEndPoint& listen_addr)
       accept_socket_(sockets::CreateNonblockingOrDie()),
       accept_channel_(loop, accept_socket_.fd()),
       listenning_(false) {
+  accept_socket_.setReuseAddr(true);
   accept_socket_.bindAddress(listen_addr);
   // accept_socket_ 可读时调用 handleRead
   accept_channel_.setReadCallback(std::bind(&Acceptor::handleRead, this));
