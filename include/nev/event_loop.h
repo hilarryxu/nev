@@ -9,7 +9,7 @@
 
 namespace nev {
 
-class EventLoop : NonCopyable {
+class NEV_EXPORT EventLoop : NonCopyable {
  public:
   EventLoop();
   ~EventLoop();
