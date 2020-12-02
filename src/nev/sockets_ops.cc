@@ -27,6 +27,15 @@ void sockets::EnsureSocketInit() {
 #endif  // OS_WIN
 }
 
+SocketDescriptor sockets::CreateOrDie() {
+  SocketDescriptor sockfd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (sockfd < 0) {
+    LOG(FATAL) << "sockets::CreateOrDie";
+  }
+
+  return sockfd;
+}
+
 SocketDescriptor sockets::CreateNonblockingOrDie() {
   SocketDescriptor sockfd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (sockfd < 0) {
@@ -35,6 +44,15 @@ SocketDescriptor sockets::CreateNonblockingOrDie() {
 
   SetNonBlockAndCloseOnExec(sockfd);
   return sockfd;
+}
+
+int sockets::Connect(SocketDescriptor sockfd, const IPEndPoint& address) {
+  SockaddrStorage storage;
+  if (!address.toSockAddr(storage.addr, &storage.addr_len)) {
+    LOG(FATAL) << "address invalid";
+  }
+
+  return ::connect(sockfd, storage.addr, storage.addr_len);
 }
 
 void sockets::BindOrDie(SocketDescriptor sockfd, const IPEndPoint& address) {
@@ -58,7 +76,9 @@ void sockets::ListenOrDie(SocketDescriptor sockfd) {
   }
 }
 
-SocketDescriptor sockets::Accept(SocketDescriptor sockfd, IPEndPoint* address) {
+SocketDescriptor sockets::Accept(SocketDescriptor sockfd,
+                                 IPEndPoint* address,
+                                 bool nonblocking) {
   DCHECK(sockfd);
   DCHECK(address);
 
@@ -78,7 +98,8 @@ SocketDescriptor sockets::Accept(SocketDescriptor sockfd, IPEndPoint* address) {
     }
     *address = ip_end_point;
 
-    SetNonBlockAndCloseOnExec(new_socket);
+    if (nonblocking)
+      SetNonBlockAndCloseOnExec(new_socket);
   }
   return new_socket;
 }

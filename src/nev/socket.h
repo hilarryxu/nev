@@ -25,7 +25,7 @@ class NEV_EXPORT Socket : NonCopyable {
   // 成功返回有效的套接字，并且已经设置为非阻塞和 close-on-exec，
   // |peeraddr| 也会设置。
   // 失败时返回 kInvalidSocket，也不会去修改 peeraddr。
-  SocketDescriptor accept(IPEndPoint* peeraddr);
+  SocketDescriptor accept(IPEndPoint* peeraddr, bool nonblocking = true);
 
  private:
   const SocketDescriptor sockfd_;

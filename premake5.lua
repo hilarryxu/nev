@@ -35,8 +35,28 @@ workspace "sln-nev"
       defines { "CRT_MINGW", "MINGW_HAS_SECURE_API", "_POSIX_C_SOURCE" }
       buildoptions { "-std=c++14", "-fno-rtti" }
 
-    filter "system:linux"
-      removefiles {
-        "src/nev/winsock_init.cc"
-      }
-      buildoptions { "-std=c++14", "-fno-rtti" }
+
+local function demo(prj_name, prj_files)
+  project(prj_name)
+    kind "ConsoleApp"
+    language "C++"
+
+    files(prj_files)
+    includedirs {
+      "src",
+      path.join(chromium_base_dir, "src"),
+      "deps/libev",
+    }
+    libdirs {
+      "builddir",
+      path.join(chromium_base_dir, "builddir"),
+    }
+
+    filter "system:windows"
+      links { "nev", "chromium_base", "ws2_32", "winmm" }
+      linkoptions { "-Wall -static -static-libgcc -static-libstdc++" }
+end
+
+
+demo("client", { "demos/client.cc" })
+demo("server", { "demos/server.cc" })

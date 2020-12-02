@@ -17,8 +17,8 @@ void Socket::listen() {
   sockets::ListenOrDie(sockfd_);
 }
 
-SocketDescriptor Socket::accept(IPEndPoint* peeraddr) {
-  return sockets::Accept(sockfd_, peeraddr);
+SocketDescriptor Socket::accept(IPEndPoint* peeraddr, bool nonblocking) {
+  return sockets::Accept(sockfd_, peeraddr, nonblocking);
 }
 
 }  // namespace nev
