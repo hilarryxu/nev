@@ -1,11 +1,20 @@
+#include "nev/socket_descriptor.h"
 #include "nev/event_loop.h"
 
+#include "build/build_config.h"
 #include "base/logging.h"
 #include "base/lazy_instance.h"
 #include "base/threading/thread_local.h"
-#include "base/time/time.h"
 
 #include "nev/libev_prelude.h"
+#include "nev/channel.h"
+
+#if defined(OS_WIN)
+#include <io.h>
+#define EV_SOCKETDESCRIPTOR_TO_FD(handle) _open_osfhandle(handle, 0)
+#else
+#define EV_SOCKETDESCRIPTOR_TO_FD(handle) handle
+#endif
 
 namespace nev {
 
@@ -15,6 +24,12 @@ namespace {
 // 前面的 LazyInstance 暂且不必关心。
 base::LazyInstance<base::ThreadLocalPointer<EventLoop> >::Leaky lazy_tls_ptr =
     LAZY_INSTANCE_INITIALIZER;
+
+void ioWatcherCb(struct ev_loop* loop, struct ev_io* io, int revents) {
+  Channel* channel = static_cast<Channel*>(io->data);
+  channel->set_revents(revents);
+  channel->handleEvent();
+}
 
 }  // namespace
 
@@ -67,6 +82,18 @@ void EventLoop::loop() {
 void EventLoop::quit() {
   quit_ = true;
   ev_break(impl_->loop(), EVBREAK_ALL);
+}
+
+void EventLoop::updateChannel(Channel* channel) {
+  DCHECK(channel->loop() == this);
+  assertInLoopThread();
+
+  struct ev_io* io_watcher = channel->io_watcher();
+  SocketDescriptor fd = channel->fd();
+  int events = channel->events();
+  io_watcher->data = channel;
+  ev_io_init(io_watcher, &ioWatcherCb, EV_SOCKETDESCRIPTOR_TO_FD(fd), events);
+  ev_io_start(impl_->loop(), io_watcher);
 }
 
 void EventLoop::abortNotInLoopThread() {

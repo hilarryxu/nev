@@ -9,6 +9,8 @@
 
 namespace nev {
 
+class Channel;
+
 class NEV_EXPORT EventLoop : NonCopyable {
  public:
   EventLoop();
@@ -19,6 +21,9 @@ class NEV_EXPORT EventLoop : NonCopyable {
   void loop();
 
   void quit();
+
+  // 仅内部使用
+  void updateChannel(Channel* channel);
 
   // 断言当前线程是否为 EventLoop 所在线程
   void assertInLoopThread() {
@@ -33,10 +38,9 @@ class NEV_EXPORT EventLoop : NonCopyable {
   }
 
  private:
-  class Impl;
-
   void abortNotInLoopThread();
 
+  class Impl;
   std::unique_ptr<Impl> impl_;
 
   bool looping_;  // FIXME(xcc): atomic
