@@ -24,6 +24,7 @@ class NEV_EXPORT EventLoop : NonCopyable {
 
   // 仅内部使用
   void updateChannel(Channel* channel);
+  void removeChannel(Channel* channel);
 
   // 断言当前线程是否为 EventLoop 所在线程
   void assertInLoopThread() {

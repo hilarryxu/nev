@@ -40,19 +40,27 @@ class NEV_EXPORT TcpConnection
   }
   // 收到数据时回调
   void setMessageCallback(const MessageCallback& cb) { message_cb_ = cb; }
+  // 仅内部使用
+  void setCloseCallback(const CloseCallback& cb) { close_cb_ = cb; }
 
   // TcpServer 接受新的客户端连接时调用
   void connectEstablished();
+  // 从 TcpServer 的 map 中移除后调用
+  void connectDestroyed();
 
  private:
   // TCP 连接状态
   // 初始状态：kConnecting
   // 连接建立后：kConnected
-  enum StateE { kConnecting, kConnected };
+  // 断开连接：kDisconnected
+  enum StateE { kConnecting, kConnected, kDisconnected };
 
   void setState(StateE s) { state_ = s; }
   void handleRead();
+  void handleClose();
+  void handleError();
 
+  // 一个 TcpConnection 只能属于一个 loop
   EventLoop* loop_;
   const std::string name_;
   StateE state_;  // FIXME(xcc): atomic
@@ -63,6 +71,7 @@ class NEV_EXPORT TcpConnection
 
   ConnectionCallback connection_cb_;
   MessageCallback message_cb_;
+  CloseCallback close_cb_;
 };
 
 }  // namespace nev

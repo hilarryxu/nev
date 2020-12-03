@@ -9,13 +9,6 @@
 #include "nev/libev_prelude.h"
 #include "nev/channel.h"
 
-#if defined(OS_WIN)
-#include <io.h>
-#define EV_SOCKETDESCRIPTOR_TO_FD(handle) _open_osfhandle(handle, 0)
-#else
-#define EV_SOCKETDESCRIPTOR_TO_FD(handle) handle
-#endif
-
 namespace nev {
 
 namespace {
@@ -24,12 +17,6 @@ namespace {
 // 前面的 LazyInstance 暂且不必关心。
 base::LazyInstance<base::ThreadLocalPointer<EventLoop> >::Leaky lazy_tls_ptr =
     LAZY_INSTANCE_INITIALIZER;
-
-void ioWatcherCb(struct ev_loop* loop, struct ev_io* io, int revents) {
-  Channel* channel = static_cast<Channel*>(io->data);
-  channel->set_revents(revents);
-  channel->handleEvent();
-}
 
 }  // namespace
 
@@ -89,11 +76,27 @@ void EventLoop::updateChannel(Channel* channel) {
   assertInLoopThread();
 
   struct ev_io* io_watcher = channel->io_watcher();
-  SocketDescriptor fd = channel->fd();
+  SocketDescriptor sockfd = channel->sockfd();
+  int fd = channel->fd();
   int events = channel->events();
-  io_watcher->data = channel;
-  ev_io_init(io_watcher, &ioWatcherCb, EV_SOCKETDESCRIPTOR_TO_FD(fd), events);
-  ev_io_start(impl_->loop(), io_watcher);
+  LOG(DEBUG) << "EventLoop::updateChannel events = " << events
+             << ", sockfd = " << sockfd << ", fd = " << fd;
+
+  // FIXME(xcc): libev 是否有接口直接修改关注事件？
+  // 这样不必每次 stop 再 start
+  ev_io_stop(impl_->loop(), io_watcher);
+  ev_io_set(io_watcher, fd, events);
+  // 不关注任何事件就不必再 start 了
+  if (!channel->isNoneEvent())
+    ev_io_start(impl_->loop(), io_watcher);
+}
+
+void EventLoop::removeChannel(Channel* channel) {
+  DCHECK(channel->loop() == this);
+  assertInLoopThread();
+
+  struct ev_io* io_watcher = channel->io_watcher();
+  ev_io_stop(impl_->loop(), io_watcher);
 }
 
 void EventLoop::abortNotInLoopThread() {

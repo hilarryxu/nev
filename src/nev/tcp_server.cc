@@ -52,7 +52,20 @@ void TcpServer::newConnection(SocketDescriptor sockfd,
   connections_[conn_name] = conn;
   conn->setConnectionCallback(connection_cb_);
   conn->setMessageCallback(message_cb_);
+  conn->setCloseCallback(std::bind(&TcpServer::removeConnection, this, _1));
   conn->connectEstablished();
+}
+
+void TcpServer::removeConnection(const TcpConnectionSharedPtr& conn) {
+  loop_->assertInLoopThread();
+  LOG(INFO) << "TcpServer::removeConnection [" << name_ << "] - connection "
+            << conn->name();
+  size_t n = connections_.erase(conn->name());
+  (void)n;
+  DCHECK(n == 1);
+  // 从 connections_ 移除后调用 conn->connectDestroyed
+  conn->connectDestroyed();
+  // NOTE: 这里就会调用 TcpConnection 的析构函数
 }
 
 }  // namespace nev

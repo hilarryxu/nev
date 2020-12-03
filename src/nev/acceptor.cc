@@ -11,7 +11,7 @@ namespace nev {
 Acceptor::Acceptor(EventLoop* loop, const IPEndPoint& listen_addr)
     : loop_(loop),
       accept_socket_(sockets::CreateNonblockingOrDie()),
-      accept_channel_(loop, accept_socket_.fd()),
+      accept_channel_(loop, accept_socket_.sockfd(), accept_socket_.fd()),
       listenning_(false) {
   accept_socket_.setReuseAddr(true);
   accept_socket_.bindAddress(listen_addr);
@@ -34,6 +34,8 @@ void Acceptor::handleRead() {
 
   IPEndPoint peer_addr;
   SocketDescriptor connfd = accept_socket_.accept(&peer_addr);
+  // NOTE: 这里不能用 connfd >= 0 判断
+  // windows 和 linux 下的 SocketDescriptor 类型不一样
   if (connfd != kInvalidSocket) {
     if (new_connection_cb_) {
       new_connection_cb_(connfd, peer_addr);

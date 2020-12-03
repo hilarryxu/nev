@@ -33,11 +33,14 @@ class NEV_EXPORT TcpServer : NonCopyable {
  private:
   // 监听套接字获取到新的客户端连接时回调
   // 在同一 acceptor loop 中是安全的
-  void newConnection(SocketDescriptor sockfd, const IPEndPoint& peerAddr);
+  void newConnection(SocketDescriptor sockfd, const IPEndPoint& peer_addr);
+  // 连接断开时回调
+  void removeConnection(const TcpConnectionSharedPtr& conn);
 
   using ConnectionMap = std::map<std::string, TcpConnectionSharedPtr>;
 
-  EventLoop* loop_;  // the acceptor loop
+  // acceptor 所在 loop
+  EventLoop* loop_;
   const std::string name_;
   std::unique_ptr<Acceptor> acceptor_;
 
