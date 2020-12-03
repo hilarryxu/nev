@@ -30,8 +30,7 @@ void TcpServer::start() {
 
   DCHECK(!acceptor_->listenning());
   if (!acceptor_->listenning()) {
-    // FIXME(xcc): 放到 loop 中执行
-    acceptor_->listen();
+    loop_->runInLoop(std::bind(&Acceptor::listen, acceptor_.get()));
   }
 }
 
@@ -64,8 +63,10 @@ void TcpServer::removeConnection(const TcpConnectionSharedPtr& conn) {
   (void)n;
   DCHECK(n == 1);
   // 从 connections_ 移除后调用 conn->connectDestroyed
-  conn->connectDestroyed();
-  // NOTE: 这里就会调用 TcpConnection 的析构函数
+  // 延迟到 pending_functors_ 中执行连接销毁
+  // 使得原先的 Channel::handleEvent 能正常执行完毕
+  // 所以这里用的是 queueInLoop，而不是 runInLoop。
+  loop_->queueInLoop(std::bind(&TcpConnection::connectDestroyed, conn));
 }
 
 }  // namespace nev
