@@ -1,6 +1,8 @@
 #include <stdio.h>
 
 #include "nev/socket_descriptor.h"
+#include "base/logging.h"
+
 #include "nev/nev_init.h"
 #include "nev/event_loop.h"
 #include "nev/ip_endpoint.h"
@@ -18,10 +20,13 @@ void onConnection(const TcpConnectionSharedPtr& conn) {
 }
 
 void onMessage(const TcpConnectionSharedPtr& conn,
-               const char* data,
-               ssize_t len) {
-  printf("onMessage(): received %zd bytes from connection [%s]\n", len,
-         conn->name().c_str());
+               Buffer* buf,
+               base::TimeTicks receive_time) {
+  LOG(DEBUG) << "onMessage(): received " << buf->readableBytes()
+             << " bytes from connection [" << conn->name() << "] at "
+             << receive_time;
+
+  printf("onMessage(): [%s]\n", buf->retrieveAllAsString().c_str());
 }
 
 int main(int argc, char* argv[]) {

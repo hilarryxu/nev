@@ -23,7 +23,7 @@ TcpConnection::TcpConnection(EventLoop* loop,
       peer_addr_(peer_addr) {
   LOG(DEBUG) << "TcpConnection::ctor[" << name_ << "] at " << this
              << " sockfd = " << sockfd;
-  channel_->setReadCallback(std::bind(&TcpConnection::handleRead, this));
+  channel_->setReadCallback(std::bind(&TcpConnection::handleRead, this, _1));
 }
 
 TcpConnection::~TcpConnection() {
@@ -52,15 +52,15 @@ void TcpConnection::connectDestroyed() {
   loop_->removeChannel(channel_.get());
 }
 
-void TcpConnection::handleRead() {
-  char buf[65536];
-  ssize_t n = sockets::Read(channel_->sockfd(), buf, sizeof buf);
+void TcpConnection::handleRead(base::TimeTicks receive_time) {
+  int saved_errno = 0;
+  ssize_t n = input_buffer_.readFd(channel_->sockfd(), &saved_errno);
   if (n > 0) {
-    message_cb_(shared_from_this(), buf, n);
+    message_cb_(shared_from_this(), &input_buffer_, receive_time);
   } else if (n == 0) {
     handleClose();
   } else {
-    LOG(ERROR) << "TcpConnection::handleRead";
+    LOG(ERROR) << "TcpConnection::handleRead saved_errno = " << saved_errno;
     handleError();
   }
 }

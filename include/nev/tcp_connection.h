@@ -8,6 +8,7 @@
 #include "nev/non_copyable.h"
 #include "nev/callbacks.h"
 #include "nev/ip_endpoint.h"
+#include "nev/buffer.h"
 
 namespace nev {
 
@@ -56,7 +57,7 @@ class NEV_EXPORT TcpConnection
   enum StateE { kConnecting, kConnected, kDisconnected };
 
   void setState(StateE s) { state_ = s; }
-  void handleRead();
+  void handleRead(base::TimeTicks receive_time);
   void handleClose();
   void handleError();
 
@@ -72,6 +73,8 @@ class NEV_EXPORT TcpConnection
   ConnectionCallback connection_cb_;
   MessageCallback message_cb_;
   CloseCallback close_cb_;
+
+  Buffer input_buffer_;
 };
 
 }  // namespace nev

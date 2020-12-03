@@ -12,7 +12,7 @@ namespace {
 void ioWatcherCb(struct ev_loop* loop, struct ev_io* io, int revents) {
   Channel* channel = static_cast<Channel*>(io->data);
   channel->set_revents(revents);
-  channel->handleEvent();
+  channel->handleEvent(base::TimeTicks::Now());
 }
 
 }  // namespace
@@ -63,7 +63,7 @@ void Channel::update() {
   loop_->updateChannel(this);
 }
 
-void Channel::handleEvent() {
+void Channel::handleEvent(base::TimeTicks receive_time) {
   LOG(DEBUG) << "BEGIN Channel::handleEvent at " << this
              << " revents = " << revents_;
   event_handling_ = true;
@@ -71,7 +71,7 @@ void Channel::handleEvent() {
   // 处理读事件
   if (revents_ & EV_READ) {
     if (read_cb_)
-      read_cb_();
+      read_cb_(receive_time);
   }
 
   // 处理写事件

@@ -4,6 +4,8 @@
 #include <memory>
 
 #include "nev/socket_descriptor.h"
+#include "base/time/time.h"
+
 #include "nev/nev_export.h"
 #include "nev/non_copyable.h"
 
@@ -16,14 +18,15 @@ class EventLoop;
 class NEV_EXPORT Channel : NonCopyable {
  public:
   using EventCallback = std::function<void()>;
+  using ReadEventCallback = std::function<void(base::TimeTicks)>;
 
   Channel(EventLoop* loop, SocketDescriptor sockfd, int fd);
   ~Channel();
 
   // 处理事件
-  void handleEvent();
+  void handleEvent(base::TimeTicks receive_time);
 
-  void setReadCallback(EventCallback cb) { read_cb_ = std::move(cb); }
+  void setReadCallback(ReadEventCallback cb) { read_cb_ = std::move(cb); }
   void setWriteCallback(EventCallback cb) { write_cb_ = std::move(cb); }
 
   SocketDescriptor sockfd() const { return sockfd_; }
@@ -74,7 +77,7 @@ class NEV_EXPORT Channel : NonCopyable {
   bool event_handling_;
 
   // 读取数据回调函数
-  EventCallback read_cb_;
+  ReadEventCallback read_cb_;
   // 写入数据回调函数
   EventCallback write_cb_;
 };
