@@ -36,6 +36,7 @@ class NEV_EXPORT EventLoop : NonCopyable {
   void queueInLoop(Functor cb);
 
   // 仅内部使用
+  void wakeup();
   void updateChannel(Channel* channel);
   void removeChannel(Channel* channel);
 
@@ -51,6 +52,7 @@ class NEV_EXPORT EventLoop : NonCopyable {
     return thread_id_ == base::PlatformThread::CurrentId();
   }
 
+  void handleWakeup();
   void doPendingFunctors();
 
  private:

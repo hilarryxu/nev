@@ -18,6 +18,11 @@ namespace {
 base::LazyInstance<base::ThreadLocalPointer<EventLoop> >::Leaky lazy_tls_ptr =
     LAZY_INSTANCE_INITIALIZER;
 
+void handleAsyncWakeup(struct ev_loop* io_loop, struct ev_async* w, int event) {
+  EventLoop* loop = static_cast<EventLoop*>(ev_userdata(io_loop));
+  loop->handleWakeup();
+}
+
 void handleDoPendingFunctors(struct ev_loop* io_loop,
                              struct ev_check* w,
                              int events) {
@@ -32,16 +37,22 @@ class EventLoop::Impl {
   Impl(EventLoop* loop) {
     io_loop_ = static_cast<struct ev_loop*>(ev_loop_new(EVFLAG_AUTO));
     ev_set_userdata(io_loop_, loop);
+    ev_async_init(&async_watcher_, &handleAsyncWakeup);
     ev_check_init(&check_watcher_, &handleDoPendingFunctors);
+    ev_set_priority(&check_watcher_, EV_MINPRI);
+
+    ev_async_start(io_loop_, &async_watcher_);
     ev_check_start(io_loop_, &check_watcher_);
   }
 
   ~Impl() {
     ev_check_stop(io_loop_, &check_watcher_);
+    ev_async_stop(io_loop_, &async_watcher_);
     ev_loop_destroy(io_loop_);
   }
 
   struct ev_loop* io_loop_;
+  struct ev_async async_watcher_;
   struct ev_check check_watcher_;
 };
 
@@ -81,7 +92,11 @@ void EventLoop::loop() {
 
 void EventLoop::quit() {
   quit_ = true;
-  ev_break(impl_->io_loop_, EVBREAK_ALL);
+  if (!isInLoopThread()) {
+    wakeup();
+  } else {
+    ev_break(impl_->io_loop_, EVBREAK_ALL);
+  }
 }
 
 void EventLoop::runInLoop(Functor cb) {
@@ -99,8 +114,14 @@ void EventLoop::queueInLoop(Functor cb) {
   }
 
   if (!isInLoopThread() || calling_pending_functors_) {
-    // wakeup();
+    wakeup();
   }
+}
+
+// 投递一个 async 事件，唤醒 io_loop。
+// 解除底层的 ::poll 等待，得以处理 pending_functors_。
+void EventLoop::wakeup() {
+  ev_async_send(impl_->io_loop_, &impl_->async_watcher_);
 }
 
 void EventLoop::updateChannel(Channel* channel) {
@@ -129,6 +150,13 @@ void EventLoop::removeChannel(Channel* channel) {
 
   struct ev_io* io_watcher = channel->io_watcher();
   ev_io_stop(impl_->io_loop_, io_watcher);
+}
+
+void EventLoop::handleWakeup() {
+  if (quit_) {
+    ev_break(impl_->io_loop_, EVBREAK_ALL);
+    return;
+  }
 }
 
 void EventLoop::doPendingFunctors() {

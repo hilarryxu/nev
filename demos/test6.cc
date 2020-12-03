@@ -24,6 +24,8 @@ class MyThread : public base::SimpleThread {
   void Run() override {
     base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(5));
     g_loop->queueInLoop(run1);
+    base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(3));
+    g_loop->quit();
   }
 };
 
