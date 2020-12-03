@@ -10,6 +10,16 @@
 
 namespace nev {
 
+namespace {
+
+bool isFaultError(int saved_errno) {
+  if (saved_errno == WSAECONNRESET)
+    return true;
+  return false;
+}
+
+}  // namespace
+
 TcpConnection::TcpConnection(EventLoop* loop,
                              const std::string& name,
                              SocketDescriptor sockfd,
@@ -92,6 +102,8 @@ void TcpConnection::handleRead(base::TimeTicks receive_time) {
   } else {
     LOG(ERROR) << "TcpConnection::handleRead saved_errno = " << saved_errno;
     handleError();
+    if (isFaultError(saved_errno))
+      handleClose();
   }
 }
 

@@ -111,11 +111,14 @@ void sockets::Close(SocketDescriptor sockfd) {
 }
 
 int sockets::GetSocketError(SocketDescriptor sockfd) {
-  int optval;
+  int optval = 0;
   int optlen = sizeof(optval);
+  int last_errno = WSAGetLastError();
   if (::getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (char*)&optval, &optlen) < 0)
-    return WSAGetLastError();
-  return optval;
+    return last_errno;
+  if (optval != 0)
+    return optval;
+  return last_errno;
 }
 
 }  // namespace nev
