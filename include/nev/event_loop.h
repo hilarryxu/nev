@@ -1,7 +1,10 @@
 #pragma once
 
+#include <functional>
 #include <memory>
+#include <vector>
 
+#include "base/synchronization/lock.h"
 #include "base/threading/platform_thread.h"
 
 #include "nev/nev_export.h"
@@ -13,6 +16,8 @@ class Channel;
 
 class NEV_EXPORT EventLoop : NonCopyable {
  public:
+  using Functor = std::function<void()>;
+
   EventLoop();
   ~EventLoop();
 
@@ -21,6 +26,14 @@ class NEV_EXPORT EventLoop : NonCopyable {
   void loop();
 
   void quit();
+
+  // 在 loop 线程中执行回调函数
+  // 在其他线程调用会退化为 queueInLoop
+  // 是线程安全的
+  void runInLoop(Functor cb);
+  // 将回调函数加入队列并唤醒线程
+  // 是线程安全的
+  void queueInLoop(Functor cb);
 
   // 仅内部使用
   void updateChannel(Channel* channel);
@@ -38,15 +51,22 @@ class NEV_EXPORT EventLoop : NonCopyable {
     return thread_id_ == base::PlatformThread::CurrentId();
   }
 
+  void doPendingFunctors();
+
  private:
   void abortNotInLoopThread();
 
   class Impl;
   std::unique_ptr<Impl> impl_;
 
-  bool looping_;  // FIXME(xcc): atomic
-  bool quit_;     // FIXME(xcc): atomic
+  bool looping_;                   // FIXME(xcc): atomic
+  bool quit_;                      // FIXME(xcc): atomic
+  bool calling_pending_functors_;  // FIXME(xcc): atomic
   base::PlatformThreadId thread_id_;
+
+  base::Lock pending_functors_lock_;
+  // 每次 io loop 处理完后处理该队列中的回调函数
+  std::vector<Functor> pending_functors_;  // Guarded by pending_functors_lock_
 };
 
 }  // namespace nev

@@ -18,25 +18,38 @@ namespace {
 base::LazyInstance<base::ThreadLocalPointer<EventLoop> >::Leaky lazy_tls_ptr =
     LAZY_INSTANCE_INITIALIZER;
 
+void handleDoPendingFunctors(struct ev_loop* io_loop,
+                             struct ev_check* w,
+                             int events) {
+  EventLoop* loop = static_cast<EventLoop*>(ev_userdata(io_loop));
+  loop->doPendingFunctors();
+}
+
 }  // namespace
 
 class EventLoop::Impl {
  public:
-  Impl() { loop_ = static_cast<struct ev_loop*>(ev_loop_new(EVFLAG_AUTO)); }
-
-  ~Impl() { ev_loop_destroy(loop_); }
-
-  struct ev_loop* loop() {
-    return loop_;
+  Impl(EventLoop* loop) {
+    io_loop_ = static_cast<struct ev_loop*>(ev_loop_new(EVFLAG_AUTO));
+    ev_set_userdata(io_loop_, loop);
+    ev_check_init(&check_watcher_, &handleDoPendingFunctors);
+    ev_check_start(io_loop_, &check_watcher_);
   }
 
- private:
-  struct ev_loop* loop_;
+  ~Impl() {
+    ev_check_stop(io_loop_, &check_watcher_);
+    ev_loop_destroy(io_loop_);
+  }
+
+  struct ev_loop* io_loop_;
+  struct ev_check check_watcher_;
 };
 
 EventLoop::EventLoop()
-    : impl_(std::make_unique<Impl>()),
+    : impl_(std::make_unique<Impl>(this)),
       looping_(false),
+      quit_(false),
+      calling_pending_functors_(false),
       thread_id_(base::PlatformThread::CurrentId()) {
   LOG(DEBUG) << "EventLoop created " << this << " in thread " << thread_id_;
 
@@ -60,7 +73,7 @@ void EventLoop::loop() {
   looping_ = true;
 
   quit_ = false;
-  ev_run(impl_->loop(), 0);
+  ev_run(impl_->io_loop_, 0);
 
   LOG(DEBUG) << "EventLoop " << this << " stop looping";
   looping_ = false;
@@ -68,7 +81,26 @@ void EventLoop::loop() {
 
 void EventLoop::quit() {
   quit_ = true;
-  ev_break(impl_->loop(), EVBREAK_ALL);
+  ev_break(impl_->io_loop_, EVBREAK_ALL);
+}
+
+void EventLoop::runInLoop(Functor cb) {
+  if (isInLoopThread()) {
+    cb();
+  } else {
+    queueInLoop(std::move(cb));
+  }
+}
+
+void EventLoop::queueInLoop(Functor cb) {
+  {
+    base::AutoLock lock(pending_functors_lock_);
+    pending_functors_.push_back(std::move(cb));
+  }
+
+  if (!isInLoopThread() || calling_pending_functors_) {
+    // wakeup();
+  }
 }
 
 void EventLoop::updateChannel(Channel* channel) {
@@ -84,11 +116,11 @@ void EventLoop::updateChannel(Channel* channel) {
 
   // FIXME(xcc): libev 是否有接口直接修改关注事件？
   // 这样不必每次 stop 再 start
-  ev_io_stop(impl_->loop(), io_watcher);
+  ev_io_stop(impl_->io_loop_, io_watcher);
   ev_io_set(io_watcher, fd, events);
   // 不关注任何事件就不必再 start 了
   if (!channel->isNoneEvent())
-    ev_io_start(impl_->loop(), io_watcher);
+    ev_io_start(impl_->io_loop_, io_watcher);
 }
 
 void EventLoop::removeChannel(Channel* channel) {
@@ -96,7 +128,23 @@ void EventLoop::removeChannel(Channel* channel) {
   assertInLoopThread();
 
   struct ev_io* io_watcher = channel->io_watcher();
-  ev_io_stop(impl_->loop(), io_watcher);
+  ev_io_stop(impl_->io_loop_, io_watcher);
+}
+
+void EventLoop::doPendingFunctors() {
+  std::vector<Functor> functors;
+  calling_pending_functors_ = true;
+
+  {
+    base::AutoLock lock(pending_functors_lock_);
+    functors.swap(pending_functors_);
+  }
+
+  for (const Functor& functor : functors) {
+    functor();
+  }
+
+  calling_pending_functors_ = false;
 }
 
 void EventLoop::abortNotInLoopThread() {

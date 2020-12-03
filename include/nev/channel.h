@@ -15,7 +15,7 @@ class EventLoop;
 
 class NEV_EXPORT Channel : NonCopyable {
  public:
-  typedef std::function<void()> EventCallback;
+  using EventCallback = std::function<void()>;
 
   Channel(EventLoop* loop, SocketDescriptor sockfd, int fd);
   ~Channel();

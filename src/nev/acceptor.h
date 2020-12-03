@@ -15,8 +15,8 @@ class IPEndPoint;
 // 接受器，用于服务端接受连接
 class NEV_EXPORT Acceptor : NonCopyable {
  public:
-  typedef std::function<void(SocketDescriptor sockfd, const IPEndPoint&)>
-      NewConnectionCallback;
+  using NewConnectionCallback =
+      std::function<void(SocketDescriptor, const IPEndPoint&)>;
 
   Acceptor(EventLoop* loop, const IPEndPoint& listen_addr);
   ~Acceptor();
