@@ -2,6 +2,7 @@
 
 #include "nev/socket_descriptor.h"
 #include "base/logging.h"
+#include "base/threading/platform_thread.h"
 
 #include "nev/nev_init.h"
 #include "nev/event_loop.h"
@@ -12,17 +13,20 @@ using namespace nev;
 
 void onConnection(const TcpConnectionSharedPtr& conn) {
   if (conn->connected()) {
-    printf("onConnection(): new connection [%s] from %s\n",
-           conn->name().c_str(), conn->peer_addr().toString().c_str());
+    printf("onConnection(): tid=%d new connection [%s] from %s\n",
+           base::PlatformThread::CurrentId(), conn->name().c_str(),
+           conn->peer_addr().toString().c_str());
   } else {
-    printf("onConnection(): connection [%s] is down\n", conn->name().c_str());
+    printf("onConnection(): tid=%d connection [%s] is down\n",
+           base::PlatformThread::CurrentId(), conn->name().c_str());
   }
 }
 
 void onMessage(const TcpConnectionSharedPtr& conn,
                Buffer* buf,
                base::TimeTicks receive_time) {
-  LOG(DEBUG) << "onMessage(): received " << buf->readableBytes()
+  LOG(DEBUG) << "onMessage(): tid=" << base::PlatformThread::CurrentId()
+             << " received " << buf->readableBytes()
              << " bytes from connection [" << conn->name() << "] at "
              << receive_time;
 
@@ -38,6 +42,9 @@ int main(int argc, char* argv[]) {
   TcpServer server(&loop, listen_addr);
   server.setConnectionCallback(onConnection);
   server.setMessageCallback(onMessage);
+  if (argc > 1) {
+    server.setThreadNum(atoi(argv[1]));
+  }
   server.start();
 
   loop.loop();

@@ -11,12 +11,16 @@ namespace nev {
 
 class Acceptor;
 class EventLoop;
+class EventLoopThreadPool;
 
 // 封装 TCP 服务端
 class NEV_EXPORT TcpServer : NonCopyable {
  public:
   TcpServer(EventLoop* loop, const IPEndPoint& listen_addr);
   ~TcpServer();
+
+  // 设置 subReactors io 线程数
+  void setThreadNum(int num_threads);
 
   // 启动服务
   // 目前不是线程安全的，待改进。
@@ -40,7 +44,10 @@ class NEV_EXPORT TcpServer : NonCopyable {
   // 在同一 acceptor loop 中是安全的
   void newConnection(SocketDescriptor sockfd, const IPEndPoint& peer_addr);
   // 连接断开时回调
+  // 主 reactor 上提交到连接对应的 subReactor 上执行 removeConnectionInLoop
   void removeConnection(const TcpConnectionSharedPtr& conn);
+  // 连接对应的 loop 上执行是线程安全的
+  void removeConnectionInLoop(const TcpConnectionSharedPtr& conn);
 
   using ConnectionMap = std::map<std::string, TcpConnectionSharedPtr>;
 
@@ -48,6 +55,7 @@ class NEV_EXPORT TcpServer : NonCopyable {
   EventLoop* loop_;
   const std::string name_;
   std::unique_ptr<Acceptor> acceptor_;
+  std::shared_ptr<EventLoopThreadPool> thread_pool_;
 
   ConnectionCallback connection_cb_;
   MessageCallback message_cb_;
