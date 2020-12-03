@@ -57,6 +57,10 @@ void TcpConnection::shutdown() {
   }
 }
 
+void TcpConnection::setTcpNoDelay(bool on) {
+  socket_->setTcpNoDelay(on);
+}
+
 void TcpConnection::connectEstablished() {
   loop_->assertInLoopThread();
   DCHECK(state_ == kConnecting);
@@ -102,6 +106,9 @@ void TcpConnection::handleWrite() {
       if (output_buffer_.readableBytes() == 0) {
         // 全部发送完了就暂时停止关注可写事件
         channel_->disableWriting();
+        if (write_complete_cb_) {
+          loop_->queueInLoop(std::bind(write_complete_cb_, shared_from_this()));
+        }
         // 写完后判断是否 shutdown
         if (state_ == kDisconnecting) {
           shutdownInLoop();
@@ -146,6 +153,8 @@ void TcpConnection::sendInLoop(const std::string& message) {
       if (implicit_cast<size_t>(nwrote) < message.size()) {
         // 没写完得下面会追加到输出缓冲区中去，等待下次发送。
         LOG(DEBUG) << "I am going to write more data";
+      } else if (write_complete_cb_) {
+        loop_->queueInLoop(std::bind(write_complete_cb_, shared_from_this()));
       }
     } else {
       // 发送数据出错了

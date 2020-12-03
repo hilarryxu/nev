@@ -30,6 +30,11 @@ class NEV_EXPORT TcpServer : NonCopyable {
   // 不是线程安全的
   void setMessageCallback(const MessageCallback& cb) { message_cb_ = cb; }
 
+  // 不是线程安全的
+  void setWriteCompleteCallback(const WriteCompleteCallback& cb) {
+    write_complete_cb_ = cb;
+  }
+
  private:
   // 监听套接字获取到新的客户端连接时回调
   // 在同一 acceptor loop 中是安全的
@@ -46,6 +51,7 @@ class NEV_EXPORT TcpServer : NonCopyable {
 
   ConnectionCallback connection_cb_;
   MessageCallback message_cb_;
+  WriteCompleteCallback write_complete_cb_;
 
   bool started_;
   int next_conn_id_;

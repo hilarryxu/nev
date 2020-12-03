@@ -41,6 +41,7 @@ class NEV_EXPORT TcpConnection
   // 主动关闭连接
   // 线程安全的
   void shutdown();
+  void setTcpNoDelay(bool on);
 
   // 连接建立并设置首次关注可读事件后回调
   void setConnectionCallback(const ConnectionCallback& cb) {
@@ -48,6 +49,11 @@ class NEV_EXPORT TcpConnection
   }
   // 收到数据时回调
   void setMessageCallback(const MessageCallback& cb) { message_cb_ = cb; }
+  // 应用层缓冲区数据发送完时回调
+  void setWriteCompleteCallback(const WriteCompleteCallback& cb) {
+    write_complete_cb_ = cb;
+  }
+
   // 仅内部使用
   void setCloseCallback(const CloseCallback& cb) { close_cb_ = cb; }
 
@@ -83,6 +89,7 @@ class NEV_EXPORT TcpConnection
 
   ConnectionCallback connection_cb_;
   MessageCallback message_cb_;
+  WriteCompleteCallback write_complete_cb_;
   CloseCallback close_cb_;
 
   Buffer input_buffer_;

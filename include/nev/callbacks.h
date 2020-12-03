@@ -26,4 +26,8 @@ using MessageCallback = std::function<
 // 连接断开回调
 using CloseCallback = std::function<void(const TcpConnectionSharedPtr&)>;
 
+// 应用层缓冲区数据发送完时回调
+using WriteCompleteCallback =
+    std::function<void(const TcpConnectionSharedPtr&)>;
+
 }  // namespace nev

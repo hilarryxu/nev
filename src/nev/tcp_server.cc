@@ -51,7 +51,9 @@ void TcpServer::newConnection(SocketDescriptor sockfd,
   connections_[conn_name] = conn;
   conn->setConnectionCallback(connection_cb_);
   conn->setMessageCallback(message_cb_);
-  conn->setCloseCallback(std::bind(&TcpServer::removeConnection, this, _1));
+  conn->setWriteCompleteCallback(write_complete_cb_);
+  conn->setCloseCallback(
+      std::bind(&TcpServer::removeConnection, this, _1));  // FIXME(xcc): unsafe
   conn->connectEstablished();
 }
 
