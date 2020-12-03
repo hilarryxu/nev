@@ -1,6 +1,8 @@
 #include "nev/socket_descriptor.h"
 #include "nev/event_loop.h"
 
+#include <unordered_map>
+
 #include "build/build_config.h"
 #include "base/logging.h"
 #include "base/lazy_instance.h"
@@ -8,8 +10,11 @@
 
 #include "nev/libev_prelude.h"
 #include "nev/channel.h"
+#include "nev/timer.h"
 
 namespace nev {
+
+using TimerPtr = std::unique_ptr<Timer>;
 
 namespace {
 
@@ -48,12 +53,19 @@ class EventLoop::Impl {
   ~Impl() {
     ev_check_stop(io_loop_, &check_watcher_);
     ev_async_stop(io_loop_, &async_watcher_);
+    // 清除并销毁所有定时器
+    timers_.clear();
+
     ev_loop_destroy(io_loop_);
   }
+
+  using TimerMap = std::unordered_map<TimerId, TimerPtr>;
 
   struct ev_loop* io_loop_;
   struct ev_async async_watcher_;
   struct ev_check check_watcher_;
+
+  TimerMap timers_;
 };
 
 EventLoop::EventLoop()
@@ -118,6 +130,22 @@ void EventLoop::queueInLoop(Functor cb) {
   }
 }
 
+TimerId EventLoop::runAfter(double after, TimerCallback cb) {
+  Timer* timer = new Timer(std::move(cb), after, 0.0);
+  runInLoop(std::bind(&EventLoop::addTimerInLoop, this, timer));
+  return timer->sequence();
+}
+TimerId EventLoop::runEvery(double repeat, TimerCallback cb) {
+  Timer* timer = new Timer(std::move(cb), 0.0, repeat);
+  runInLoop(std::bind(&EventLoop::addTimerInLoop, this, timer));
+  return timer->sequence();
+}
+
+void EventLoop::cancel(TimerId timer_id) {
+  // FIXME(xcc): 是否安全，需要改成 queueInLoop？
+  runInLoop(std::bind(&EventLoop::cancelTimerInLoop, this, timer_id));
+}
+
 // 投递一个 async 事件，唤醒 io_loop。
 // 解除底层的 ::poll 等待，得以处理 pending_functors_。
 void EventLoop::wakeup() {
@@ -173,6 +201,23 @@ void EventLoop::doPendingFunctors() {
   }
 
   calling_pending_functors_ = false;
+}
+
+void EventLoop::addTimerInLoop(Timer* timer) {
+  assertInLoopThread();
+  TimerPtr timer_ptr(timer);
+  // 存放到 map 中
+  impl_->timers_[timer->sequence()] = std::move(timer_ptr);
+  // 关联 loop 并启动定时器
+  timer->start(impl_->io_loop_);
+}
+
+void EventLoop::cancelTimerInLoop(TimerId timer_id) {
+  assertInLoopThread();
+  // 从 map 中移除，会调用 Timer 的析构函数，停止定时器。
+  size_t n = impl_->timers_.erase(timer_id);
+  (void)n;
+  DCHECK(n == 1);
 }
 
 void EventLoop::abortNotInLoopThread() {

@@ -9,10 +9,13 @@
 
 #include "nev/nev_export.h"
 #include "nev/non_copyable.h"
+#include "nev/callbacks.h"
+#include "nev/timer_id.h"
 
 namespace nev {
 
 class Channel;
+class Timer;
 
 class NEV_EXPORT EventLoop : NonCopyable {
  public:
@@ -35,6 +38,16 @@ class NEV_EXPORT EventLoop : NonCopyable {
   // 是线程安全的
   void queueInLoop(Functor cb);
 
+  // 延迟 after 秒的定时器
+  // 是线程安全的
+  TimerId runAfter(double after, TimerCallback cb);
+  // 每 repeat 秒重复执行的定时器
+  // 是线程安全的
+  TimerId runEvery(double repeat, TimerCallback cb);
+  // 取消定时器
+  // 是线程安全的
+  void cancel(TimerId timer_id);
+
   // 仅内部使用
   void wakeup();
   void updateChannel(Channel* channel);
@@ -54,6 +67,8 @@ class NEV_EXPORT EventLoop : NonCopyable {
 
   void handleWakeup();
   void doPendingFunctors();
+  void addTimerInLoop(Timer* timer);
+  void cancelTimerInLoop(TimerId timer_id);
 
  private:
   void abortNotInLoopThread();

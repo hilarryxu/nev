@@ -30,4 +30,7 @@ using CloseCallback = std::function<void(const TcpConnectionSharedPtr&)>;
 using WriteCompleteCallback =
     std::function<void(const TcpConnectionSharedPtr&)>;
 
+// 定时器回调
+using TimerCallback = std::function<void()>;
+
 }  // namespace nev
