@@ -48,8 +48,7 @@ Channel::Channel(EventLoop* loop, SocketDescriptor sockfd, int fd)
 }
 
 Channel::~Channel() {
-  LOG(DEBUG) << "Channel::dtor at " << this << " sockfd = " << sockfd_
-             << ", event_handling_ = " << event_handling_;
+  LOG(DEBUG) << "Channel::dtor at " << this << " sockfd = " << sockfd_;
   DCHECK(!event_handling_);
 
   // FIXME(xcc): ev_io_stop

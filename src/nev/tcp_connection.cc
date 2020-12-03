@@ -35,6 +35,7 @@ TcpConnection::~TcpConnection() {
 
 void TcpConnection::send(const std::string& message) {
   // 连接状态下才能发送数据
+  // 也就是说 shutdown 之后状态改变不能再写数据了
   if (state_ == kConnected) {
     if (loop_->isInLoopThread()) {
       // loop 线程中直接发送
@@ -43,6 +44,16 @@ void TcpConnection::send(const std::string& message) {
       // 其他线程中调用就投递一个 functor
       loop_->runInLoop(std::bind(&TcpConnection::sendInLoop, this, message));
     }
+  }
+}
+
+void TcpConnection::shutdown() {
+  // FIXME(xcc): use compare and swap
+  if (state_ == kConnected) {
+    // 设置状态为正在关闭连接
+    setState(kDisconnecting);
+    // FIXME(xcc): shared_from_this()?
+    loop_->runInLoop(std::bind(&TcpConnection::shutdownInLoop, this));
   }
 }
 
@@ -57,7 +68,7 @@ void TcpConnection::connectEstablished() {
 
 void TcpConnection::connectDestroyed() {
   loop_->assertInLoopThread();
-  DCHECK(state_ == kConnected);
+  DCHECK(state_ == kConnected || state_ == kDisconnecting);
   setState(kDisconnected);
   // 停止关注任何事件
   channel_->disableAll();
@@ -91,9 +102,10 @@ void TcpConnection::handleWrite() {
       if (output_buffer_.readableBytes() == 0) {
         // 全部发送完了就暂时停止关注可写事件
         channel_->disableWriting();
-        // if (state_ == kDisconnecting) {
-        //   shutdownInLoop();
-        // }
+        // 写完后判断是否 shutdown
+        if (state_ == kDisconnecting) {
+          shutdownInLoop();
+        }
       } else {
         LOG(DEBUG) << "I am going to write more data";
       }
@@ -110,7 +122,7 @@ void TcpConnection::handleClose() {
   loop_->assertInLoopThread();
   LOG(DEBUG) << "TcpConnection::handleClose sockfd = " << channel_->sockfd()
              << " state = " << state_;
-  DCHECK(state_ == kConnected);
+  DCHECK(state_ == kConnected || state_ == kDisconnecting);
   // 停止关注任何事件
   channel_->disableAll();
   // 最后调用 close_cb_
@@ -154,6 +166,15 @@ void TcpConnection::sendInLoop(const std::string& message) {
     if (!channel_->isWriting()) {
       channel_->enableWriting();
     }
+  }
+}
+
+void TcpConnection::shutdownInLoop() {
+  loop_->assertInLoopThread();
+  // 不再写时关闭套接字发送数据端
+  // 还在写时不执行任何操作，等待写完后会自动调用该函数
+  if (!channel_->isWriting()) {
+    socket_->shutdownWrite();
   }
 }
 
