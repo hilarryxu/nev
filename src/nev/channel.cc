@@ -64,8 +64,6 @@ void Channel::update() {
 }
 
 void Channel::handleEvent(base::TimeTicks receive_time) {
-  LOG(DEBUG) << "BEGIN Channel::handleEvent at " << this
-             << " revents = " << revents_;
   event_handling_ = true;
 
   // 处理读事件
@@ -80,16 +78,7 @@ void Channel::handleEvent(base::TimeTicks receive_time) {
       write_cb_();
   }
 
-  LOG(DEBUG) << "Channel::handleEvent at " << this
-             << " try set event_handling_ = false, event_handling_ = "
-             << event_handling_;
   event_handling_ = false;
-  LOG(DEBUG) << "Channel::handleEvent at " << this
-             << " after set event_handling_ = false, event_handling_ = "
-             << event_handling_;
-
-  LOG(DEBUG) << "END Channel::handleEvent at " << this
-             << " revents = " << revents_;
 }
 
 }  // namespace nev

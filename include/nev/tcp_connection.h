@@ -35,6 +35,9 @@ class NEV_EXPORT TcpConnection
   const IPEndPoint& peer_addr() const { return peer_addr_; }
   bool connected() const { return state_ == kConnected; }
 
+  // 线程安全的
+  void send(const std::string& message);
+
   // 连接建立并设置首次关注可读事件后回调
   void setConnectionCallback(const ConnectionCallback& cb) {
     connection_cb_ = cb;
@@ -54,12 +57,14 @@ class NEV_EXPORT TcpConnection
   // 初始状态：kConnecting
   // 连接建立后：kConnected
   // 断开连接：kDisconnected
-  enum StateE { kConnecting, kConnected, kDisconnected };
+  enum StateE { kConnecting, kConnected, kDisconnecting, kDisconnected };
 
   void setState(StateE s) { state_ = s; }
   void handleRead(base::TimeTicks receive_time);
+  void handleWrite();
   void handleClose();
   void handleError();
+  void sendInLoop(const std::string& message);
 
   // 一个 TcpConnection 只能属于一个 loop
   EventLoop* loop_;
@@ -75,6 +80,7 @@ class NEV_EXPORT TcpConnection
   CloseCallback close_cb_;
 
   Buffer input_buffer_;
+  Buffer output_buffer_;
 };
 
 }  // namespace nev
