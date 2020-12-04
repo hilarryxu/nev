@@ -28,7 +28,7 @@ ssize_t NEV_EXPORT Write(SocketDescriptor sockfd,
 void NEV_EXPORT ShutdownWrite(SocketDescriptor sockfd);
 void NEV_EXPORT Close(SocketDescriptor sockfd);
 
-int NEV_EXPORT GetSocketError(SocketDescriptor sockfd);
+int NEV_EXPORT GetSocketError(SocketDescriptor sockfd, int saved_errno = 0);
 
 }  // namespace sockets
 
