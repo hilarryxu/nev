@@ -36,8 +36,8 @@ void TcpServer::start() {
     thread_pool_->start();
   }
 
-  DCHECK(!acceptor_->listenning());
-  if (!acceptor_->listenning()) {
+  DCHECK(!acceptor_->listening());
+  if (!acceptor_->listening()) {
     loop_->runInLoop(std::bind(&Acceptor::listen, acceptor_.get()));
   }
 }

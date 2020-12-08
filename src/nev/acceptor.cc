@@ -12,7 +12,7 @@ Acceptor::Acceptor(EventLoop* loop, const IPEndPoint& listen_addr)
     : loop_(loop),
       accept_socket_(sockets::CreateNonblockingOrDie()),
       accept_channel_(loop, accept_socket_.sockfd(), accept_socket_.fd()),
-      listenning_(false) {
+      listening_(false) {
   accept_socket_.setReuseAddr(true);
   accept_socket_.bindAddress(listen_addr);
   // accept_socket_ 可读时调用 handleRead
@@ -24,7 +24,7 @@ Acceptor::~Acceptor() {}
 void Acceptor::listen() {
   loop_->assertInLoopThread();
 
-  listenning_ = true;
+  listening_ = true;
   accept_socket_.listen();
   accept_channel_.enableReading();
 }

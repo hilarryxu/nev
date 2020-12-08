@@ -25,7 +25,7 @@ class NEV_EXPORT Acceptor : NonCopyable {
     new_connection_cb_ = cb;
   }
 
-  bool listenning() const { return listenning_; }
+  bool listening() const { return listening_; }
 
   // 在端口上监听，并关注可读事件
   void listen();
@@ -39,7 +39,7 @@ class NEV_EXPORT Acceptor : NonCopyable {
   Channel accept_channel_;
   // 新的客户端连接到来时的回调函数
   NewConnectionCallback new_connection_cb_;
-  bool listenning_;
+  bool listening_;
 };
 
 }  // namespace nev
