@@ -34,7 +34,11 @@ workspace "sln-nev"
 
     filter { "system:windows", "toolset:gcc" }
       defines { "CRT_MINGW", "MINGW_HAS_SECURE_API", "_POSIX_C_SOURCE" }
-      buildoptions { "-std=c++14", "-fno-rtti" }
+      buildoptions {
+        "-std=c++14",
+        "-fno-rtti",
+        "-Wall -Wextra -Wconversion -Wno-unused-parameter -Woverloaded-virtual -Wpointer-arith -Wshadow -Wwrite-strings",
+      }
 
 
 local function demo(prj_name, prj_files)

@@ -9,6 +9,7 @@ namespace nev {
 
 Socket::~Socket() {
   sockets::Close(sockfd_);
+  // FIXME(xcc): 需要 _close(fd_) 不？
 }
 
 void Socket::bindAddress(const IPEndPoint& addr) {
@@ -29,12 +30,14 @@ void Socket::shutdownWrite() {
 
 void Socket::setTcpNoDelay(bool on) {
   int optval = on ? 1 : 0;
-  setsockopt(sockfd_, IPPROTO_TCP, TCP_NODELAY, (char*)&optval, sizeof(optval));
+  ::setsockopt(sockfd_, IPPROTO_TCP, TCP_NODELAY, (char*)(&optval),
+               sizeof(optval));
 }
 
 void Socket::setReuseAddr(bool on) {
   int optval = on ? 1 : 0;
-  setsockopt(sockfd_, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(optval));
+  ::setsockopt(sockfd_, SOL_SOCKET, SO_REUSEADDR, (char*)(&optval),
+               sizeof(optval));
 }
 
 void Socket::setReusePort(bool on) {
@@ -48,7 +51,8 @@ void Socket::setReusePort(bool on) {
 
 void Socket::setKeepAlive(bool on) {
   int optval = on ? 1 : 0;
-  setsockopt(sockfd_, SOL_SOCKET, SO_KEEPALIVE, (char*)&optval, sizeof(optval));
+  ::setsockopt(sockfd_, SOL_SOCKET, SO_KEEPALIVE, (char*)(&optval),
+               sizeof(optval));
 }
 
 }  // namespace nev
