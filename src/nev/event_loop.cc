@@ -23,6 +23,7 @@ namespace {
 base::LazyInstance<base::ThreadLocalPointer<EventLoop> >::Leaky lazy_tls_ptr =
     LAZY_INSTANCE_INITIALIZER;
 
+// 唤醒 IO 线程
 void handleAsyncWakeup(struct ev_loop* io_loop, struct ev_async* w, int event) {
   EventLoop* loop = static_cast<EventLoop*>(ev_userdata(io_loop));
   loop->handleWakeup();
@@ -69,7 +70,7 @@ class EventLoop::Impl {
 };
 
 EventLoop::EventLoop()
-    : impl_(std::make_unique<Impl>(this)),
+    : impl_(new Impl(this)),
       looping_(false),
       quit_(false),
       calling_pending_functors_(false),
@@ -94,15 +95,17 @@ void EventLoop::loop() {
   DCHECK(!looping_);
   assertInLoopThread();
   looping_ = true;
-
   quit_ = false;
+
   ev_run(impl_->io_loop_, 0);
 
   LOG(DEBUG) << "EventLoop " << this << " stop looping";
   looping_ = false;
 }
 
+// NOTE: 请不要在 loop() 前调用 quit()
 void EventLoop::quit() {
+  // 设置退出标志并尝试唤醒线程
   quit_ = true;
   if (!isInLoopThread()) {
     wakeup();
@@ -130,11 +133,17 @@ void EventLoop::queueInLoop(Functor cb) {
   }
 }
 
+size_t EventLoop::queueSize() const {
+  base::AutoLock lock(pending_functors_lock_);
+  return pending_functors_.size();
+}
+
 TimerId EventLoop::runAfter(double after, TimerCallback cb) {
   Timer* timer = new Timer(std::move(cb), after, 0.0);
   runInLoop(std::bind(&EventLoop::addTimerInLoop, this, timer));
   return timer->sequence();
 }
+
 TimerId EventLoop::runEvery(double repeat, TimerCallback cb) {
   Timer* timer = new Timer(std::move(cb), 0.0, repeat);
   runInLoop(std::bind(&EventLoop::addTimerInLoop, this, timer));
@@ -142,7 +151,7 @@ TimerId EventLoop::runEvery(double repeat, TimerCallback cb) {
 }
 
 void EventLoop::cancel(TimerId timer_id) {
-  // FIXME(xcc): 是否安全，需要改成 queueInLoop？
+  // FIXME(xcc): 是否安全，需要改成 queueInLoop 不？
   runInLoop(std::bind(&EventLoop::cancelTimerInLoop, this, timer_id));
 }
 
@@ -181,9 +190,9 @@ void EventLoop::removeChannel(Channel* channel) {
 }
 
 void EventLoop::handleWakeup() {
+  // 处理 quit() 调用
   if (quit_) {
     ev_break(impl_->io_loop_, EVBREAK_ALL);
-    return;
   }
 }
 

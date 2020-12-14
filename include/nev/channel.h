@@ -39,7 +39,7 @@ class NEV_EXPORT Channel : NonCopyable {
   SocketDescriptor sockfd() const { return sockfd_; }
   // NOTE: windwos 下套接字描述符和文件描述符是不一样的
   // libev 内部需要的是文件描述符，所以增加了这个函数
-  SocketDescriptor fd() const { return fd_; }
+  int fd() const { return fd_; }
   int events() const { return events_; }
   void set_revents(int revents) { revents_ = revents; }  // 仅内部使用
   // 判断是否不关注任何事件

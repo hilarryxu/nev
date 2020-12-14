@@ -28,24 +28,29 @@ class NEV_EXPORT EventLoop : NonCopyable {
   // NOTE: 必须在创建它的线程上调用
   void loop();
 
+  // 退出循环
   void quit();
 
   // 在 loop 线程中执行回调函数
   // 在其他线程调用会退化为 queueInLoop
-  // 是线程安全的
+  // Thread safe.
   void runInLoop(Functor cb);
   // 将回调函数加入队列并唤醒线程
-  // 是线程安全的
+  // Thread safe.
   void queueInLoop(Functor cb);
 
+  size_t queueSize() const;
+
+  // TODO: runAt
+
   // 延迟 after 秒的定时器
-  // 是线程安全的
+  // Thread safe.
   TimerId runAfter(double after, TimerCallback cb);
   // 每 repeat 秒重复执行的定时器
-  // 是线程安全的
+  // Thread safe.
   TimerId runEvery(double repeat, TimerCallback cb);
   // 取消定时器
-  // 是线程安全的
+  // Thread safe.
   void cancel(TimerId timer_id);
 
   // 仅内部使用
@@ -65,13 +70,15 @@ class NEV_EXPORT EventLoop : NonCopyable {
     return thread_id_ == base::PlatformThread::CurrentId();
   }
 
+  // TODO: Context 支持
+
   void handleWakeup();
   void doPendingFunctors();
-  void addTimerInLoop(Timer* timer);
-  void cancelTimerInLoop(TimerId timer_id);
 
  private:
   void abortNotInLoopThread();
+  void addTimerInLoop(Timer* timer);
+  void cancelTimerInLoop(TimerId timer_id);
 
   class Impl;
   std::unique_ptr<Impl> impl_;
@@ -81,7 +88,7 @@ class NEV_EXPORT EventLoop : NonCopyable {
   bool calling_pending_functors_;  // FIXME(xcc): atomic
   base::PlatformThreadId thread_id_;
 
-  base::Lock pending_functors_lock_;
+  mutable base::Lock pending_functors_lock_;
   // 每次 io loop 处理完后处理该队列中的回调函数
   std::vector<Functor> pending_functors_;  // Guarded by pending_functors_lock_
 };
