@@ -2,6 +2,8 @@
 
 #include "build/build_config.h"
 #include "base/logging.h"
+
+#include "nev/macros.h"
 #include "nev/sys_addrinfo.h"
 #include "nev/ip_endpoint.h"
 #include "nev/sockaddr_storage.h"
@@ -19,7 +21,7 @@ void setNonBlockAndCloseOnExec(SocketDescriptor sockfd) {
 
 SocketDescriptor sockets::CreateOrDie() {
   SocketDescriptor sockfd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  if (sockfd < 0) {
+  if (sockfd == kInvalidSocket) {
     LOG(FATAL) << "sockets::CreateOrDie";
   }
 
@@ -28,7 +30,7 @@ SocketDescriptor sockets::CreateOrDie() {
 
 SocketDescriptor sockets::CreateNonblockingOrDie() {
   SocketDescriptor sockfd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  if (sockfd < 0) {
+  if (sockfd == kInvalidSocket) {
     LOG(FATAL) << "sockets::CreateNonblockingOrDie";
   }
 
@@ -75,18 +77,17 @@ SocketDescriptor sockets::Accept(SocketDescriptor sockfd,
   SockaddrStorage storage;
   SocketDescriptor new_socket =
       ::accept(sockfd, storage.addr, &storage.addr_len);
-  if (new_socket < 0) {
+  if (new_socket == kInvalidSocket) {
     int saved_errno = WSAGetLastError();
+    // FIXME(xcc): other errors?
     if (saved_errno != WSAEWOULDBLOCK)
       LOG(FATAL) << "unexpected error of accept, error " << saved_errno;
   } else {
-    IPEndPoint ip_end_point;
-    if (!ip_end_point.fromSockAddr(storage.addr, storage.addr_len)) {
+    if (!address->fromSockAddr(storage.addr, storage.addr_len)) {
       NOTREACHED();
       if (::closesocket(new_socket) < 0)
         PLOG(ERROR) << "closesocket";
     }
-    *address = ip_end_point;
 
     if (nonblocking)
       setNonBlockAndCloseOnExec(new_socket);
@@ -95,11 +96,13 @@ SocketDescriptor sockets::Accept(SocketDescriptor sockfd,
 }
 
 ssize_t sockets::Read(SocketDescriptor sockfd, void* buf, size_t count) {
-  return ::recv(sockfd, (char*)buf, count, 0);
+  return implicit_cast<ssize_t>(
+      ::recv(sockfd, (char*)buf, static_cast<int>(count), 0));
 }
 
 ssize_t sockets::Write(SocketDescriptor sockfd, const void* buf, size_t count) {
-  return ::send(sockfd, (const char*)buf, count, 0);
+  return implicit_cast<ssize_t>(
+      ::send(sockfd, (const char*)buf, static_cast<int>(count), 0));
 }
 
 void sockets::ShutdownWrite(SocketDescriptor sockfd) {
