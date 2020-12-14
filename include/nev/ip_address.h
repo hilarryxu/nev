@@ -33,6 +33,8 @@ class NEV_EXPORT IPAddress {
 
   IPAddress(const IPAddress& other);
 
+  IPAddress& operator=(const IPAddress& other);
+
   ~IPAddress();
 
   bool isIPv4() const;

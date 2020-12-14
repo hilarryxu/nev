@@ -53,10 +53,9 @@ IPEndPoint::~IPEndPoint() {}
 IPEndPoint::IPEndPoint(const IPAddress& address, uint16_t port)
     : address_(address), port_(port) {}
 
-IPEndPoint::IPEndPoint(const IPEndPoint& endpoint) {
-  address_ = endpoint.address_;
-  port_ = endpoint.port_;
-}
+IPEndPoint::IPEndPoint(const IPEndPoint& other) = default;
+
+IPEndPoint& IPEndPoint::operator=(const IPEndPoint& other) = default;
 
 bool IPEndPoint::toSockAddr(struct sockaddr* address,
                             socklen_t* address_length) const {
@@ -84,7 +83,6 @@ bool IPEndPoint::toSockAddr(struct sockaddr* address,
 bool IPEndPoint::fromSockAddr(const struct sockaddr* sock_addr,
                               socklen_t sock_addr_len) {
   DCHECK(sock_addr);
-
   const uint8_t* address;
   size_t address_len;
   uint16_t port;

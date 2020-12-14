@@ -13,8 +13,6 @@ IPAddress::IPAddress() {}
 IPAddress::IPAddress(const std::vector<uint8_t>& address)
     : ip_address_(address) {}
 
-IPAddress::IPAddress(const IPAddress& other) = default;
-
 IPAddress::IPAddress(const uint8_t* address, size_t address_len)
     : ip_address_(address, address + address_len) {}
 
@@ -25,6 +23,10 @@ IPAddress::IPAddress(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3) {
   ip_address_.push_back(b2);
   ip_address_.push_back(b3);
 }
+
+IPAddress::IPAddress(const IPAddress& other) = default;
+
+IPAddress& IPAddress::operator=(const IPAddress& other) = default;
 
 IPAddress::~IPAddress() {}
 

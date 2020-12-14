@@ -23,7 +23,9 @@ class NEV_EXPORT IPEndPoint {
   IPEndPoint();
   ~IPEndPoint();
   IPEndPoint(const IPAddress& address, uint16_t port);
-  IPEndPoint(const IPEndPoint& endpoint);
+  IPEndPoint(const IPEndPoint& other);
+
+  IPEndPoint& operator=(const IPEndPoint& other);
 
   const IPAddress& address() const { return address_; }
   uint16_t port() const { return port_; }
