@@ -29,7 +29,6 @@ Acceptor::~Acceptor() {
 
 void Acceptor::listen() {
   loop_->assertInLoopThread();
-
   listening_ = true;
   accept_socket_.listen();
   accept_channel_.enableReading();
@@ -37,7 +36,6 @@ void Acceptor::listen() {
 
 void Acceptor::handleRead() {
   loop_->assertInLoopThread();
-
   IPEndPoint peer_addr;
   SocketDescriptor connfd = accept_socket_.accept(&peer_addr);
   // NOTE: 这里不能用 connfd >= 0 判断

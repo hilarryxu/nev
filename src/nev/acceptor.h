@@ -23,8 +23,8 @@ class NEV_EXPORT Acceptor : NonCopyable {
            bool reuse_port = false);
   ~Acceptor();
 
-  void setNewConnectionCallback(const NewConnectionCallback& cb) {
-    new_connection_cb_ = cb;
+  void setNewConnectionCallback(NewConnectionCallback cb) {
+    new_connection_cb_ = std::move(cb);
   }
 
   bool listening() const { return listening_; }
