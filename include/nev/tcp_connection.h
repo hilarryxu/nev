@@ -3,6 +3,8 @@
 #include <memory>
 #include <string>
 
+#include "base/strings/string_piece.h"
+
 #include "nev/socket_descriptor.h"
 #include "nev/nev_export.h"
 #include "nev/non_copyable.h"
@@ -38,8 +40,10 @@ class NEV_EXPORT TcpConnection
 
   // 发送数据
   // Thread safe.
-  void send(const std::string& message);
-  // 主动关闭连接
+  void send(const void* data, size_t len);
+  void send(const base::StringPiece& message);
+  void send(Buffer* buf);
+  // 主动关闭连接（其实是写完后关闭写端）
   // Not Thread safe.
   void shutdown();
   void setTcpNoDelay(bool on);
@@ -88,7 +92,8 @@ class NEV_EXPORT TcpConnection
   void handleWrite();
   void handleClose();
   void handleError(int saved_errno);
-  void sendInLoop(const std::string& message);
+  void sendInLoop(const base::StringPiece& message);
+  void sendInLoop(const void* data, size_t len);
   void shutdownInLoop();
 
   // 一个 TcpConnection 只能属于一个 loop

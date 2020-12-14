@@ -126,7 +126,7 @@ class NEV_EXPORT Buffer {
   }
 
   base::StringPiece toStringPiece() const {
-    return base::StringPiece(peek(), static_cast<int>(readableBytes()));
+    return base::StringPiece(peek(), readableBytes());
   }
 
   void append(const base::StringPiece& str) { append(str.data(), str.size()); }

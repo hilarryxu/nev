@@ -46,7 +46,11 @@ TcpConnection::~TcpConnection() {
   DCHECK(state_ == kDisconnected);
 }
 
-void TcpConnection::send(const std::string& message) {
+void TcpConnection::send(const void* data, size_t len) {
+  send(base::StringPiece(static_cast<const char*>(data), len));
+}
+
+void TcpConnection::send(const base::StringPiece& message) {
   // 连接状态下才能发送数据
   // 也就是说 shutdown 之后状态改变不能再写数据了
   if (state_ == kConnected) {
@@ -55,7 +59,29 @@ void TcpConnection::send(const std::string& message) {
       sendInLoop(message);
     } else {
       // 其他线程中调用就投递一个 functor
-      loop_->runInLoop(std::bind(&TcpConnection::sendInLoop, this, message));
+      void (TcpConnection::*fp)(const base::StringPiece& message) =
+          &TcpConnection::sendInLoop;
+      // NOTE: 这里复制了一份数据到绑定的 functor 参数中
+      // 有一些性能开销但保证的发送过程中数据的访问安全性
+      loop_->runInLoop(std::bind(fp, this, message.as_string()));
+    }
+  }
+}
+
+void TcpConnection::send(Buffer* buf) {
+  // 连接状态下才能发送数据
+  // 也就是说 shutdown 之后状态改变不能再写数据了
+  if (state_ == kConnected) {
+    if (loop_->isInLoopThread()) {
+      // loop 线程中直接发送
+      sendInLoop(buf->peek(), buf->readableBytes());
+      buf->retrieveAll();
+    } else {
+      // 其他线程中调用就投递一个 functor
+      void (TcpConnection::*fp)(const base::StringPiece& message) =
+          &TcpConnection::sendInLoop;
+      // FIXME(xcc): 性能优化？
+      loop_->runInLoop(std::bind(fp, this, buf->retrieveAllAsString()));
     }
   }
 }
@@ -160,15 +186,18 @@ void TcpConnection::handleError(int saved_errno) {
              << "] - SO_ERROR = " << err;
 }
 
-void TcpConnection::sendInLoop(const std::string& message) {
+void TcpConnection::sendInLoop(const base::StringPiece& message) {
+  sendInLoop(message.data(), message.size());
+}
+
+void TcpConnection::sendInLoop(const void* data, size_t len) {
   loop_->assertInLoopThread();
   ssize_t nwrote = 0;
-  size_t len = message.size();
   size_t remaining = len;
 
   // 没有在写数据并且输出缓冲区为空，那么可以直接发送数据。
   if (!channel_->isWriting() && output_buffer_.readableBytes() == 0) {
-    nwrote = sockets::Write(channel_->sockfd(), message.data(), len);
+    nwrote = sockets::Write(channel_->sockfd(), data, len);
     if (nwrote >= 0) {
       remaining = len - nwrote;
       if (implicit_cast<size_t>(nwrote) < len) {
@@ -200,7 +229,7 @@ void TcpConnection::sendInLoop(const std::string& message) {
     }
 
     // 把没写完的追加到输出缓冲区
-    output_buffer_.append(message.data() + nwrote, message.size() - nwrote);
+    output_buffer_.append(static_cast<const char*>(data) + nwrote, remaining);
     // 没写完就继续关注可写事件
     if (!channel_->isWriting()) {
       channel_->enableWriting();
