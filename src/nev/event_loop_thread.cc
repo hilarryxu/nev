@@ -1,6 +1,7 @@
 #include "nev/socket_descriptor.h"
 #include "nev/event_loop_thread.h"
 
+#include "build/build_config.h"
 #include "base/strings/stringprintf.h"
 
 #include "nev/event_loop.h"
@@ -15,6 +16,7 @@ EventLoopThread::~EventLoopThread() {}
 
 EventLoop* EventLoopThread::startLoop() {
   event_.Reset();
+
   // 创建并启动线程
   base::PlatformThread::CreateNonJoinable(0, this);
 
@@ -27,8 +29,13 @@ EventLoop* EventLoopThread::startLoop() {
 }
 
 void EventLoopThread::ThreadMain() {
+#if defined(OS_WIN)
+  const std::string name = base::StringPrintf(
+      "%s/%ld", name_prefix_.c_str(), base::PlatformThread::CurrentId());
+#else
   const std::string name = base::StringPrintf(
       "%s/%d", name_prefix_.c_str(), base::PlatformThread::CurrentId());
+#endif
   // Note: |name.c_str()| must remain valid for for the whole life of the
   // thread.
   base::PlatformThread::SetName(name);
