@@ -70,6 +70,9 @@ class NEV_EXPORT Channel : NonCopyable {
   bool isReading() const { return events_ & kReadEvent; }
   bool isWriting() const { return events_ & kWriteEvent; }
 
+  // 从 loop 中移除事件监听
+  void remove();
+
   EventLoop* loop() { return loop_; }
 
   // 仅内部使用

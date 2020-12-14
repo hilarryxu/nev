@@ -64,6 +64,11 @@ void Channel::update() {
   loop_->updateChannel(this);
 }
 
+void Channel::remove() {
+  DCHECK(isNoneEvent());
+  loop_->removeChannel(this);
+}
+
 void Channel::handleEvent(base::TimeTicks receive_time) {
   std::shared_ptr<void> guard;
   if (tied_) {

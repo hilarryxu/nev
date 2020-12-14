@@ -8,18 +8,24 @@
 
 namespace nev {
 
-Acceptor::Acceptor(EventLoop* loop, const IPEndPoint& listen_addr)
+Acceptor::Acceptor(EventLoop* loop,
+                   const IPEndPoint& listen_addr,
+                   bool reuse_port)
     : loop_(loop),
       accept_socket_(sockets::CreateNonblockingOrDie()),
       accept_channel_(loop, accept_socket_.sockfd(), accept_socket_.fd()),
       listening_(false) {
   accept_socket_.setReuseAddr(true);
+  accept_socket_.setReusePort(reuse_port);
   accept_socket_.bindAddress(listen_addr);
   // accept_socket_ 可读时调用 handleRead
   accept_channel_.setReadCallback(std::bind(&Acceptor::handleRead, this));
 }
 
-Acceptor::~Acceptor() {}
+Acceptor::~Acceptor() {
+  accept_channel_.disableAll();
+  accept_channel_.remove();
+}
 
 void Acceptor::listen() {
   loop_->assertInLoopThread();

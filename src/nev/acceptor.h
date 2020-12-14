@@ -18,7 +18,9 @@ class NEV_EXPORT Acceptor : NonCopyable {
   using NewConnectionCallback =
       std::function<void(SocketDescriptor, const IPEndPoint&)>;
 
-  Acceptor(EventLoop* loop, const IPEndPoint& listen_addr);
+  Acceptor(EventLoop* loop,
+           const IPEndPoint& listen_addr,
+           bool reuse_port = false);
   ~Acceptor();
 
   void setNewConnectionCallback(const NewConnectionCallback& cb) {
