@@ -54,16 +54,13 @@ ssize_t Buffer::readFd(SocketDescriptor fd, int* savedErrno) {
   return n;
 }
 #elif defined(OS_WIN)
-ssize_t Buffer::readFd(SocketDescriptor fd, int* savedErrno) {
-  char extrabuf[65536];
-  const size_t writable = writableBytes();
-  const ssize_t n = sockets::Read(fd, extrabuf, sizeof(extrabuf));
+ssize_t Buffer::readFd(SocketDescriptor fd, int* saved_errno) {
+  char extra_buf[65536];
+  const ssize_t n = sockets::Read(fd, extra_buf, sizeof(extra_buf));
   if (n <= 0) {
-    *savedErrno = WSAGetLastError();
-  } else if (implicit_cast<size_t>(n) <= writable) {
-    append(extrabuf, n);
+    *saved_errno = WSAGetLastError();
   } else {
-    append(extrabuf, n);
+    append(extra_buf, implicit_cast<size_t>(n));
   }
   return n;
 }
