@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
   IPEndPoint listen_addr(IPAddress::IPv4Localhost(), 9981);
   EventLoop loop;
 
-  TcpServer server(&loop, listen_addr);
+  TcpServer server(&loop, listen_addr, "test9");
   server.setConnectionCallback(onConnection);
   server.setMessageCallback(onMessage);
   server.setWriteCompleteCallback(onWriteComplete);

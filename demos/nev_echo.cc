@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
 
     EventLoop loop;
 
-    TcpServer server(&loop, listen_addr);
+    TcpServer server(&loop, listen_addr, "nev_echo");
     server.setConnectionCallback(onConnection);
     server.setMessageCallback(onMessage);
     server.start();

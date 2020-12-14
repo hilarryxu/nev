@@ -9,12 +9,35 @@
 
 namespace nev {
 
-TcpServer::TcpServer(EventLoop* loop, const IPEndPoint& listen_addr)
+namespace {
+
+void defaultConnectionCallback(const TcpConnectionSharedPtr& conn) {
+  if (conn->connected()) {
+    printf("onConnection(): new connection [%s] from %s\n",
+           conn->name().c_str(), conn->peer_addr().toString().c_str());
+  } else {
+    printf("onConnection(): connection [%s] is down\n", conn->name().c_str());
+  }
+}
+
+void defaultMessageCallback(const TcpConnectionSharedPtr& conn,
+                            Buffer* buf,
+                            base::TimeTicks receive_time) {
+  buf->retrieveAll();
+}
+
+}  // namespace
+
+TcpServer::TcpServer(EventLoop* loop,
+                     const IPEndPoint& listen_addr,
+                     const std::string& name,
+                     bool reuse_port)
     : loop_(loop),
-      name_(listen_addr.toString()),
-      acceptor_(new Acceptor(loop, listen_addr)),
+      name_(name),
+      acceptor_(new Acceptor(loop, listen_addr, reuse_port)),
       thread_pool_(new EventLoopThreadPool(loop, name_)),
-      started_(false),
+      connection_cb_(defaultConnectionCallback),
+      message_cb_(defaultMessageCallback),
       next_conn_id_(1) {
   acceptor_->setNewConnectionCallback(
       std::bind(&TcpServer::newConnection, this, _1, _2));
@@ -23,6 +46,13 @@ TcpServer::TcpServer(EventLoop* loop, const IPEndPoint& listen_addr)
 TcpServer::~TcpServer() {
   loop_->assertInLoopThread();
   LOG(DEBUG) << "TcpServer::~TcpServer [" << name_ << "] destructing";
+
+  // 销毁 connections
+  for (auto& item : connections_) {
+    TcpConnectionSharedPtr conn(item.second);
+    item.second.reset();
+    conn->loop()->runInLoop(std::bind(&TcpConnection::connectDestroyed, conn));
+  }
 }
 
 void TcpServer::setThreadNum(int num_threads) {
@@ -31,14 +61,13 @@ void TcpServer::setThreadNum(int num_threads) {
 }
 
 void TcpServer::start() {
-  if (!started_) {
-    started_ = true;
-    thread_pool_->start();
-  }
+  if (base::subtle::NoBarrier_CompareAndSwap(&started_, 0, 1) == 0) {
+    thread_pool_->start(thread_init_cb_);
 
-  DCHECK(!acceptor_->listening());
-  if (!acceptor_->listening()) {
-    loop_->runInLoop(std::bind(&Acceptor::listen, acceptor_.get()));
+    DCHECK(!acceptor_->listening());
+    if (!acceptor_->listening()) {
+      loop_->runInLoop(std::bind(&Acceptor::listen, acceptor_.get()));
+    }
   }
 }
 
