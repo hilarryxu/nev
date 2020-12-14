@@ -2,10 +2,6 @@
 
 #include <string.h>  // memset
 
-#ifndef NDEBUG
-#include <assert.h>
-#endif
-
 namespace nev {
 
 inline void MemZero(void* p, size_t n) {

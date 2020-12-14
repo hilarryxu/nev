@@ -30,6 +30,10 @@ using CloseCallback = std::function<void(const TcpConnectionSharedPtr&)>;
 using WriteCompleteCallback =
     std::function<void(const TcpConnectionSharedPtr&)>;
 
+// 高水位回调
+using HighWaterMarkCallback =
+    std::function<void(const TcpConnectionSharedPtr&, size_t)>;
+
 // 定时器回调
 using TimerCallback = std::function<void()>;
 

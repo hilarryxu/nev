@@ -34,14 +34,17 @@ class NEV_EXPORT TcpConnection
   const IPEndPoint& local_addr() const { return local_addr_; }
   const IPEndPoint& peer_addr() const { return peer_addr_; }
   bool connected() const { return state_ == kConnected; }
+  bool disconnected() const { return state_ == kDisconnected; }
 
   // 发送数据
-  // 线程安全的
+  // Thread safe.
   void send(const std::string& message);
   // 主动关闭连接
-  // 线程安全的
+  // Not Thread safe.
   void shutdown();
   void setTcpNoDelay(bool on);
+
+  // TODO: Context 支持
 
   // 连接建立并设置首次关注可读事件后回调
   void setConnectionCallback(const ConnectionCallback& cb) {
@@ -53,6 +56,16 @@ class NEV_EXPORT TcpConnection
   void setWriteCompleteCallback(const WriteCompleteCallback& cb) {
     write_complete_cb_ = cb;
   }
+  // 堆积数据太多时回调
+  void setHighWaterMarkCallback(const HighWaterMarkCallback& cb,
+                                size_t high_water_mark) {
+    high_water_mark_cb_ = cb;
+    high_water_mark_ = high_water_mark;
+  }
+
+  Buffer* inputBuffer() { return &input_buffer_; }
+
+  Buffer* outputBuffer() { return &output_buffer_; }
 
   // 仅内部使用
   void setCloseCallback(const CloseCallback& cb) { close_cb_ = cb; }
@@ -74,7 +87,7 @@ class NEV_EXPORT TcpConnection
   void handleRead(base::TimeTicks receive_time);
   void handleWrite();
   void handleClose();
-  void handleError();
+  void handleError(int saved_errno);
   void sendInLoop(const std::string& message);
   void shutdownInLoop();
 
@@ -90,8 +103,10 @@ class NEV_EXPORT TcpConnection
   ConnectionCallback connection_cb_;
   MessageCallback message_cb_;
   WriteCompleteCallback write_complete_cb_;
+  HighWaterMarkCallback high_water_mark_cb_;
   CloseCallback close_cb_;
 
+  size_t high_water_mark_;
   Buffer input_buffer_;
   Buffer output_buffer_;
 };

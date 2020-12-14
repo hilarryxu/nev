@@ -31,16 +31,19 @@ TcpConnection::TcpConnection(EventLoop* loop,
       socket_(new Socket(sockfd)),
       channel_(new Channel(loop, sockfd, socket_->fd())),
       local_addr_(local_addr),
-      peer_addr_(peer_addr) {
+      peer_addr_(peer_addr),
+      high_water_mark_(64 * 1024 * 1024) {
   LOG(DEBUG) << "TcpConnection::ctor[" << name_ << "] at " << this
              << " sockfd = " << sockfd;
   channel_->setReadCallback(std::bind(&TcpConnection::handleRead, this, _1));
   channel_->setWriteCallback(std::bind(&TcpConnection::handleWrite, this));
+  socket_->setKeepAlive(true);
 }
 
 TcpConnection::~TcpConnection() {
   LOG(DEBUG) << "TcpConnection::dtor[" << name_ << "] at " << this
              << " sockfd = " << channel_->sockfd();
+  DCHECK(state_ == kDisconnected);
 }
 
 void TcpConnection::send(const std::string& message) {
@@ -75,6 +78,9 @@ void TcpConnection::connectEstablished() {
   loop_->assertInLoopThread();
   DCHECK(state_ == kConnecting);
   setState(kConnected);
+  // NOTE: channel_ 中关联一下 TcpConnection，类似弱回调
+  // 确保 TcpConnection 存活时事件触发调用 TcpConnection::handleRead 的安全性
+  channel_->tie(shared_from_this());
   channel_->enableReading();
   // 连接建立回调
   connection_cb_(shared_from_this());
@@ -89,7 +95,7 @@ void TcpConnection::connectDestroyed() {
   // 连接断开回调
   connection_cb_(shared_from_this());
   // 从反应器中移除 channel_
-  loop_->removeChannel(channel_.get());
+  channel_->remove();
 }
 
 void TcpConnection::handleRead(base::TimeTicks receive_time) {
@@ -101,7 +107,7 @@ void TcpConnection::handleRead(base::TimeTicks receive_time) {
     handleClose();
   } else {
     LOG(ERROR) << "TcpConnection::handleRead saved_errno = " << saved_errno;
-    handleError();
+    handleError(saved_errno);
     if (isFaultError(saved_errno))
       handleClose();
   }
@@ -148,8 +154,8 @@ void TcpConnection::handleClose() {
   close_cb_(shared_from_this());
 }
 
-void TcpConnection::handleError() {
-  int err = sockets::GetSocketError(channel_->sockfd());
+void TcpConnection::handleError(int saved_errno) {
+  int err = sockets::GetSocketError(channel_->sockfd(), saved_errno);
   LOG(ERROR) << "TcpConnection::handleError [" << name_
              << "] - SO_ERROR = " << err;
 }
@@ -157,12 +163,15 @@ void TcpConnection::handleError() {
 void TcpConnection::sendInLoop(const std::string& message) {
   loop_->assertInLoopThread();
   ssize_t nwrote = 0;
+  size_t len = message.size();
+  size_t remaining = len;
 
   // 没有在写数据并且输出缓冲区为空，那么可以直接发送数据。
   if (!channel_->isWriting() && output_buffer_.readableBytes() == 0) {
-    nwrote = sockets::Write(channel_->sockfd(), message.data(), message.size());
+    nwrote = sockets::Write(channel_->sockfd(), message.data(), len);
     if (nwrote >= 0) {
-      if (implicit_cast<size_t>(nwrote) < message.size()) {
+      remaining = len - nwrote;
+      if (implicit_cast<size_t>(nwrote) < len) {
         // 没写完得下面会追加到输出缓冲区中去，等待下次发送。
         LOG(DEBUG) << "I am going to write more data";
       } else if (write_complete_cb_) {
@@ -179,8 +188,17 @@ void TcpConnection::sendInLoop(const std::string& message) {
   }
 
   DCHECK(nwrote >= 0);
+  DCHECK(remaining <= len);
   // 正在写的话就不能调用 sockets::Write 了，会乱序，只能先放到输出缓冲区。
-  if (implicit_cast<size_t>(nwrote) < message.size()) {
+  if (remaining > 0) {
+    // 判断高水位，且仅在首次超水位时调用一次。
+    size_t old_len = output_buffer_.readableBytes();
+    if (old_len + remaining >= high_water_mark_ && old_len < high_water_mark_ &&
+        high_water_mark_cb_) {
+      loop_->queueInLoop(std::bind(high_water_mark_cb_, shared_from_this(),
+                                   old_len + remaining));
+    }
+
     // 把没写完的追加到输出缓冲区
     output_buffer_.append(message.data() + nwrote, message.size() - nwrote);
     // 没写完就继续关注可写事件
