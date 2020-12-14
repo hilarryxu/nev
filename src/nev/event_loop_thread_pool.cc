@@ -36,6 +36,7 @@ void EventLoopThreadPool::start(const ThreadInitCallback& cb) {
 
   // 仅单个 base_loop 时
   if (num_threads_ == 0 && cb) {
+    // 执行初始化回调函数
     cb(base_loop_);
   }
 }
@@ -49,6 +50,7 @@ EventLoop* EventLoopThreadPool::getNextLoop() {
     // round-robin
     loop = loops_[next_];
     ++next_;
+    // 超出数组大小时回滚到 0
     if (implicit_cast<size_t>(next_) >= loops_.size()) {
       next_ = 0;
     }
@@ -73,6 +75,7 @@ std::vector<EventLoop*> EventLoopThreadPool::getAllLoops() {
     // 返回单个 base_loop
     return std::vector<EventLoop*>(1, base_loop_);
   } else {
+    // 返回 loops 数组
     return loops_;
   }
 }

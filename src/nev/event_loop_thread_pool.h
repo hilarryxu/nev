@@ -24,9 +24,11 @@ class NEV_EXPORT EventLoopThreadPool : NonCopyable {
   void start(const ThreadInitCallback& cb = ThreadInitCallback());
 
   // round-robin 算法获取 loop
+  // start 之后才有效
   EventLoop* getNextLoop();
 
   // 按 hash_code 获取 loop
+  // 暂时未用到该函数
   EventLoop* getLoopForHash(size_t hash_code);
 
   // 返回所有 loop
