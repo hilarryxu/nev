@@ -15,6 +15,8 @@ namespace nev {
 
 class EventLoop;
 
+// 关联 sockfd 与事件回调
+// Channel 建立后只会在同一个线程中操作
 class NEV_EXPORT Channel : NonCopyable {
  public:
   using EventCallback = std::function<void()>;
@@ -26,8 +28,13 @@ class NEV_EXPORT Channel : NonCopyable {
   // 处理事件
   void handleEvent(base::TimeTicks receive_time);
 
+  // NOTE: 因为基于 libev 实现的原因，这里没有 closeCallback 和 errorCallback
   void setReadCallback(ReadEventCallback cb) { read_cb_ = std::move(cb); }
   void setWriteCallback(EventCallback cb) { write_cb_ = std::move(cb); }
+
+  // 维护一个外部对象的弱引用，在 handleEvent 中判断外部对象是否还存活
+  // 没有存活时就跳过 handleEvent
+  void tie(const std::shared_ptr<void>& obj);
 
   SocketDescriptor sockfd() const { return sockfd_; }
   // NOTE: windwos 下套接字描述符和文件描述符是不一样的
@@ -43,6 +50,10 @@ class NEV_EXPORT Channel : NonCopyable {
     events_ |= kReadEvent;
     update();
   }
+  void disableReading() {
+    events_ &= ~kReadEvent;
+    update();
+  }
   void enableWriting() {
     events_ |= kWriteEvent;
     update();
@@ -56,6 +67,7 @@ class NEV_EXPORT Channel : NonCopyable {
     events_ = kNoneEvent;
     update();
   }
+  bool isReading() const { return events_ & kReadEvent; }
   bool isWriting() const { return events_ & kWriteEvent; }
 
   EventLoop* loop() { return loop_; }
@@ -66,6 +78,7 @@ class NEV_EXPORT Channel : NonCopyable {
  private:
   // 新增、修改、删除关注的事件
   void update();
+  void handleEventWithGuard(base::TimeTicks receive_time);
 
   static const int kNoneEvent;
   static const int kReadEvent;
@@ -82,6 +95,9 @@ class NEV_EXPORT Channel : NonCopyable {
   // poll 后待处理事件
   int revents_;
 
+  // 弱引用外部对象
+  std::weak_ptr<void> tie_;
+  bool tied_;
   // 是否正在处理事件
   bool event_handling_;
 

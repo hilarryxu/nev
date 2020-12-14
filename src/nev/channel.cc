@@ -23,39 +23,41 @@ const int Channel::kWriteEvent = EV_WRITE;
 
 class Channel::Impl {
  public:
-  Impl() {}
-
+  Impl(Channel* ch) {
+    ev_init(&io_watcher_, &ioWatcherCb);
+    io_watcher_.data = ch;
+  }
   ~Impl() {}
 
-  struct ev_io* io_watcher() {
-    return &io_watcher_;
-  }
-
- private:
   struct ev_io io_watcher_;
 };
 
 Channel::Channel(EventLoop* loop, SocketDescriptor sockfd, int fd)
-    : impl_(std::make_unique<Impl>()),
+    : impl_(new Impl(this)),
       loop_(loop),
       sockfd_(sockfd),
       fd_(fd),
       events_(0),
       revents_(0),
-      event_handling_(false) {
-  ev_init(impl_->io_watcher(), &ioWatcherCb);
-  impl_->io_watcher()->data = this;
-}
+      tied_(false),
+      event_handling_(false) {}
 
 Channel::~Channel() {
   LOG(DEBUG) << "Channel::dtor at " << this << " sockfd = " << sockfd_;
   DCHECK(!event_handling_);
 
-  // FIXME(xcc): ev_io_stop
+  // FIXME(xcc): ensure ev_io_stop?
+  DCHECK(ev_is_pending(io_watcher()) == 0);
+  DCHECK(ev_is_active(io_watcher()) == 0);
+}
+
+void Channel::tie(const std::shared_ptr<void>& obj) {
+  tie_ = obj;
+  tied_ = true;
 }
 
 struct ev_io* Channel::io_watcher() {
-  return impl_->io_watcher();
+  return &(impl_->io_watcher_);
 }
 
 void Channel::update() {
@@ -63,6 +65,18 @@ void Channel::update() {
 }
 
 void Channel::handleEvent(base::TimeTicks receive_time) {
+  std::shared_ptr<void> guard;
+  if (tied_) {
+    guard = tie_.lock();
+    if (guard) {
+      handleEventWithGuard(receive_time);
+    }
+  } else {
+    handleEventWithGuard(receive_time);
+  }
+}
+
+void Channel::handleEventWithGuard(base::TimeTicks receive_time) {
   event_handling_ = true;
 
   // 处理读事件
