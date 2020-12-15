@@ -37,7 +37,6 @@ workspace "sln-nev"
       buildoptions {
         "-std=c++14",
         "-fno-rtti",
-        "-Wall -Wextra -Wconversion -Wno-unused-parameter -Woverloaded-virtual -Wpointer-arith -Wshadow -Wwrite-strings",
       }
 
 
