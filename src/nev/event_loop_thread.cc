@@ -36,7 +36,7 @@ void EventLoopThread::ThreadMain() {
   const std::string name = base::StringPrintf(
       "%s/%d", name_prefix_.c_str(), base::PlatformThread::CurrentId());
 #endif
-  // Note: |name.c_str()| must remain valid for for the whole life of the
+  // NOTE: |name.c_str()| must remain valid for for the whole life of the
   // thread.
   base::PlatformThread::SetName(name);
 

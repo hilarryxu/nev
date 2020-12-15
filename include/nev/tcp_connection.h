@@ -24,6 +24,8 @@ class NEV_EXPORT TcpConnection
     : NonCopyable,
       public std::enable_shared_from_this<TcpConnection> {
  public:
+  using ContextCleanupCallback = std::function<void(void*)>;
+
   TcpConnection(EventLoop* loop,
                 const std::string& name,
                 SocketDescriptor sockfd,
@@ -53,7 +55,12 @@ class NEV_EXPORT TcpConnection
   void forceCloseWithDelay(double seconds);
   void setTcpNoDelay(bool on);
 
-  // TODO: Context 支持
+  void setContext(void* context,
+                  const ContextCleanupCallback& cb = ContextCleanupCallback()) {
+    context_cleanup_cb_ = cb;
+    context_ = context;
+  }
+  void* getContext() { return context_; }
 
   // 连接建立并设置首次关注可读事件后回调
   void setConnectionCallback(const ConnectionCallback& cb) {
@@ -121,6 +128,9 @@ class NEV_EXPORT TcpConnection
   size_t high_water_mark_;
   Buffer input_buffer_;
   Buffer output_buffer_;
+
+  ContextCleanupCallback context_cleanup_cb_;
+  void* context_;
 };
 
 }  // namespace nev

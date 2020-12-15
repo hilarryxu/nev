@@ -39,7 +39,8 @@ TcpConnection::TcpConnection(EventLoop* loop,
       channel_(new Channel(loop, sockfd, socket_->fd())),
       local_addr_(local_addr),
       peer_addr_(peer_addr),
-      high_water_mark_(64 * 1024 * 1024) {
+      high_water_mark_(64 * 1024 * 1024),
+      context_(nullptr) {
   LOG(DEBUG) << "TcpConnection::ctor[" << name_ << "] at " << this
              << " sockfd = " << sockfd;
   channel_->setReadCallback(std::bind(&TcpConnection::handleRead, this, _1));
@@ -52,6 +53,10 @@ TcpConnection::~TcpConnection() {
              << " sockfd = " << channel_->sockfd()
              << " state = " << stateToString();
   DCHECK(state_ == kDisconnected);
+
+  if (context_ && context_cleanup_cb_) {
+    context_cleanup_cb_(context_);
+  }
 }
 
 void TcpConnection::send(const void* data, size_t len) {
