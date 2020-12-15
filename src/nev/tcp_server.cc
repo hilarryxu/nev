@@ -112,7 +112,7 @@ void TcpServer::removeConnectionInLoop(const TcpConnectionSharedPtr& conn) {
   DCHECK(n == 1);
   // 相应的断开连接操作也要提交到连接对应 loop 上执行
   EventLoop* conn_loop = conn->loop();
-  // 从 connections_ 移除后调用 conn->connectDestroyed
+  // NOTE: 从 connections_ 移除后调用 conn->connectDestroyed
   // 延迟到 pending_functors_ 中执行连接销毁
   // 使得原先的 Channel::handleEvent 能正常执行完毕
   // 所以这里用的是 queueInLoop，而不是 runInLoop。

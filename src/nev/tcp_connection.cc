@@ -130,14 +130,25 @@ void TcpConnection::setTcpNoDelay(bool on) {
   socket_->setTcpNoDelay(on);
 }
 
+// NOTE: Channel::handleEvent 只能保证这个 Channel 所属的 TcpConnection
+// 不会在这个 handleEvent 函数内析构，不能防止在 handleEvent 期间它去析构别的
+// TcpConnection。换句话说，A、B 两个 TcpConnection 在一次 loop
+// 中触发了事件，那么在处理 A 的事件的时候它有可能主动关闭 B
+// 连接，那么库要做的（并且目前的代码已经做到的）是让 B 的析构发生在这次 loop
+// 之后（这正是为什么要 queueInLoop 而不是 runInLoop），否则 Channel B 会变成
+// dangling pointer，channel B 的 handleEvent() 直接会 core dump。channel B 的
+// tie_.lock() 也起不了作用了，因为 Channel 对象本身已经析构了。
 void TcpConnection::connectEstablished() {
   loop_->assertInLoopThread();
   DCHECK(state_ == kConnecting);
   setState(kConnected);
   // NOTE: channel_ 中关联一下 TcpConnection，类似弱回调
   // 确保 TcpConnection 存活时事件触发调用 TcpConnection::handleRead
-  // 等函数的安全性。目前感觉可能性较小，除非 TcpConnection::connectDestroyed
-  // 后又往队列里加了 functor
+  // 等函数的安全性。
+  // 目前感觉可能性较小，因为 TcpServer::removeConnection 中
+  // conn_loop->queueInLoop(std::bind(&TcpConnection::connectDestroyed, conn));
+  // 保证了连接销毁不会穿插在事件处理过程中。
+  // 姑且看作是双保险，或者适用于 channel 不放在 TcpConnection 中的情形。
   channel_->tie(shared_from_this());
   channel_->enableReading();
 
@@ -217,6 +228,9 @@ void TcpConnection::handleClose() {
   setState(kDisconnected);
   // 停止关注任何事件
   channel_->disableAll();
+  // NOTE: 这里不直接 channel_->remove() 是因为当前还处在
+  // 处理事件流程中，当一次 loop 产生多个本连接事件时会
+  // 影响后面的事件处理过程（因为已经从 loop 中移除了）
   TcpConnectionSharedPtr guard_conn(shared_from_this());
   // 调用断开连接回调
   connection_cb_(guard_conn);
