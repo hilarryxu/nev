@@ -70,7 +70,8 @@ class NEV_EXPORT EventLoop : NonCopyable {
     return thread_id_ == base::PlatformThread::CurrentId();
   }
 
-  // TODO: Context 支持
+  // 当前线程的 loop
+  static EventLoop* Current();
 
   void handleWakeup();
   void doPendingFunctors();

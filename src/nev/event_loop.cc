@@ -189,6 +189,11 @@ void EventLoop::removeChannel(Channel* channel) {
   ev_io_stop(impl_->io_loop_, io_watcher);
 }
 
+// static
+EventLoop* EventLoop::Current() {
+  return lazy_tls_ptr.Pointer()->Get();
+}
+
 void EventLoop::handleWakeup() {
   // 处理 quit() 调用
   if (quit_) {
