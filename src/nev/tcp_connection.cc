@@ -18,6 +18,13 @@ bool isFaultError(int saved_errno) {
   return false;
 }
 
+void handleForceCloseWithDelay(const std::weak_ptr<TcpConnection>& wp_conn) {
+  std::shared_ptr<TcpConnection> sp_conn(wp_conn.lock());
+  if (sp_conn) {
+    sp_conn->forceClose();
+  }
+}
+
 }  // namespace
 
 TcpConnection::TcpConnection(EventLoop* loop,
@@ -94,6 +101,23 @@ void TcpConnection::shutdown() {
     setState(kDisconnecting);
     // FIXME(xcc): shared_from_this()?
     loop_->runInLoop(std::bind(&TcpConnection::shutdownInLoop, this));
+  }
+}
+
+void TcpConnection::forceClose() {
+  // FIXME(xcc): use compare and swap
+  if (state_ == kConnected || state_ == kDisconnecting) {
+    setState(kDisconnecting);
+    loop_->queueInLoop(
+        std::bind(&TcpConnection::forceCloseInLoop, shared_from_this()));
+  }
+}
+
+void TcpConnection::forceCloseWithDelay(double seconds) {
+  if (state_ == kConnected || state_ == kDisconnecting) {
+    setState(kDisconnecting);
+    std::weak_ptr<TcpConnection> wp_conn(shared_from_this());
+    loop_->runAfter(seconds, std::bind(&handleForceCloseWithDelay, wp_conn));
   }
 }
 
@@ -265,6 +289,14 @@ void TcpConnection::shutdownInLoop() {
   // 还在写时不执行任何操作，等待写完后会自动调用该函数
   if (!channel_->isWriting()) {
     socket_->shutdownWrite();
+  }
+}
+
+void TcpConnection::forceCloseInLoop() {
+  loop_->assertInLoopThread();
+  if (state_ == kConnected || state_ == kDisconnecting) {
+    // as if we received 0 byte in handleRead();
+    handleClose();
   }
 }
 

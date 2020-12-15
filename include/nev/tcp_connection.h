@@ -43,9 +43,14 @@ class NEV_EXPORT TcpConnection
   void send(const void* data, size_t len);
   void send(const base::StringPiece& message);
   void send(Buffer* buf);
+
   // 主动关闭连接（其实是写完后关闭写端）
   // Not Thread safe.
   void shutdown();
+  // 强制断开连接
+  void forceClose();
+  // 延迟断开连接
+  void forceCloseWithDelay(double seconds);
   void setTcpNoDelay(bool on);
 
   // TODO: Context 支持
@@ -95,6 +100,7 @@ class NEV_EXPORT TcpConnection
   void sendInLoop(const base::StringPiece& message);
   void sendInLoop(const void* data, size_t len);
   void shutdownInLoop();
+  void forceCloseInLoop();
   const char* stateToString() const;
 
   // 一个 TcpConnection 只能属于一个 loop
