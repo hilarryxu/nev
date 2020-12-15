@@ -42,7 +42,8 @@ TcpConnection::TcpConnection(EventLoop* loop,
 
 TcpConnection::~TcpConnection() {
   LOG(DEBUG) << "TcpConnection::dtor[" << name_ << "] at " << this
-             << " sockfd = " << channel_->sockfd();
+             << " sockfd = " << channel_->sockfd()
+             << " state = " << stateToString();
   DCHECK(state_ == kDisconnected);
 }
 
@@ -105,23 +106,31 @@ void TcpConnection::connectEstablished() {
   DCHECK(state_ == kConnecting);
   setState(kConnected);
   // NOTE: channel_ 中关联一下 TcpConnection，类似弱回调
-  // 确保 TcpConnection 存活时事件触发调用 TcpConnection::handleRead 的安全性
+  // 确保 TcpConnection 存活时事件触发调用 TcpConnection::handleRead
+  // 等函数的安全性。目前感觉可能性较小，除非 TcpConnection::connectDestroyed
+  // 后又往队列里加了 functor
   channel_->tie(shared_from_this());
   channel_->enableReading();
+
   // 连接建立回调
   connection_cb_(shared_from_this());
 }
 
 void TcpConnection::connectDestroyed() {
   loop_->assertInLoopThread();
-  DCHECK(state_ == kConnected || state_ == kDisconnecting);
-  setState(kDisconnected);
-  // 停止关注任何事件
-  channel_->disableAll();
-  // 连接断开回调
-  connection_cb_(shared_from_this());
+  // 通常 handleClose 时已经将状态置为 kDisconnected
+  if (state_ == kConnected) {
+    // NOTE: 该分支什么情况下触发？
+    setState(kDisconnected);
+    // 停止关注任何事件
+    channel_->disableAll();
+    // 连接断开回调
+    connection_cb_(shared_from_this());
+  }
+
   // 从反应器中移除 channel_
   channel_->remove();
+  // NOTE: 执行完该函数后就开始销毁连接及相关资源
 }
 
 void TcpConnection::handleRead(base::TimeTicks receive_time) {
@@ -153,7 +162,7 @@ void TcpConnection::handleWrite() {
         if (write_complete_cb_) {
           loop_->queueInLoop(std::bind(write_complete_cb_, shared_from_this()));
         }
-        // 写完后判断是否 shutdown
+        // 写完后判断是否需要 shutdown 关闭写端
         if (state_ == kDisconnecting) {
           shutdownInLoop();
         }
@@ -172,12 +181,20 @@ void TcpConnection::handleWrite() {
 void TcpConnection::handleClose() {
   loop_->assertInLoopThread();
   LOG(DEBUG) << "TcpConnection::handleClose sockfd = " << channel_->sockfd()
-             << " state = " << state_;
+             << " state = " << stateToString();
   DCHECK(state_ == kConnected || state_ == kDisconnecting);
+  // 连接已经不能继续使用了，可以标记为 kDisconnected，
+  // 不必等到 TcpConnection::connectDestroyed 再标记。
+  setState(kDisconnected);
   // 停止关注任何事件
   channel_->disableAll();
+  TcpConnectionSharedPtr guard_conn(shared_from_this());
+  // 调用断开连接回调
+  connection_cb_(guard_conn);
   // 最后调用 close_cb_
-  close_cb_(shared_from_this());
+  // 其实是调用 TcpServer::removeConnection，从 TcpServer 中移除后
+  // 再调用 TcpConnection::connectDestroyed
+  close_cb_(guard_conn);
 }
 
 void TcpConnection::handleError(int saved_errno) {
@@ -194,6 +211,12 @@ void TcpConnection::sendInLoop(const void* data, size_t len) {
   loop_->assertInLoopThread();
   ssize_t nwrote = 0;
   size_t remaining = len;
+
+  // FIXME(xcc): 严重套接字错误处理
+  if (state_ == kDisconnected) {
+    LOG(WARNING) << "disconnected, give up writing";
+    return;
+  }
 
   // 没有在写数据并且输出缓冲区为空，那么可以直接发送数据。
   if (!channel_->isWriting() && output_buffer_.readableBytes() == 0) {
@@ -216,7 +239,6 @@ void TcpConnection::sendInLoop(const void* data, size_t len) {
     }
   }
 
-  DCHECK(nwrote >= 0);
   DCHECK(remaining <= len);
   // 正在写的话就不能调用 sockets::Write 了，会乱序，只能先放到输出缓冲区。
   if (remaining > 0) {
@@ -243,6 +265,21 @@ void TcpConnection::shutdownInLoop() {
   // 还在写时不执行任何操作，等待写完后会自动调用该函数
   if (!channel_->isWriting()) {
     socket_->shutdownWrite();
+  }
+}
+
+const char* TcpConnection::stateToString() const {
+  switch (state_) {
+    case kDisconnected:
+      return "kDisconnected";
+    case kConnecting:
+      return "kConnecting";
+    case kConnected:
+      return "kConnected";
+    case kDisconnecting:
+      return "kDisconnecting";
+    default:
+      return "unknown state";
   }
 }
 

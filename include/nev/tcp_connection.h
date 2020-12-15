@@ -95,6 +95,7 @@ class NEV_EXPORT TcpConnection
   void sendInLoop(const base::StringPiece& message);
   void sendInLoop(const void* data, size_t len);
   void shutdownInLoop();
+  const char* stateToString() const;
 
   // 一个 TcpConnection 只能属于一个 loop
   EventLoop* loop_;
