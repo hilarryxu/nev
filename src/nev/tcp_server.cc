@@ -38,6 +38,7 @@ TcpServer::TcpServer(EventLoop* loop,
       thread_pool_(new EventLoopThreadPool(loop, name_)),
       connection_cb_(defaultConnectionCallback),
       message_cb_(defaultMessageCallback),
+      started_(0),
       next_conn_id_(1) {
   acceptor_->setNewConnectionCallback(
       std::bind(&TcpServer::newConnection, this, _1, _2));
