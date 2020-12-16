@@ -138,6 +138,16 @@ void TcpConnection::setTcpNoDelay(bool on) {
 // 之后（这正是为什么要 queueInLoop 而不是 runInLoop），否则 Channel B 会变成
 // dangling pointer，channel B 的 handleEvent() 直接会 core dump。channel B 的
 // tie_.lock() 也起不了作用了，因为 Channel 对象本身已经析构了。
+//
+// 要点1：
+// TcpConnection 回收之前，会调用 connectDestroyed，其中调用
+// channel_->remove();，这样就不可能再会有 Channel::handleEvent() 被调用了。
+//
+// 要点2：
+// tie() 的作用是防止 Channel::handleEvent() 运行期间其 owner 对象析构（比如调用
+// closeCallback 期间），导致 Channel 本身被销毁。
+//
+// 详细原因见：https://blog.csdn.net/Solstice/article/details/12564917
 void TcpConnection::connectEstablished() {
   loop_->assertInLoopThread();
   DCHECK(state_ == kConnecting);
@@ -145,10 +155,6 @@ void TcpConnection::connectEstablished() {
   // NOTE: channel_ 中关联一下 TcpConnection，类似弱回调
   // 确保 TcpConnection 存活时事件触发调用 TcpConnection::handleRead
   // 等函数的安全性。
-  // 目前感觉可能性较小，因为 TcpServer::removeConnection 中
-  // conn_loop->queueInLoop(std::bind(&TcpConnection::connectDestroyed, conn));
-  // 保证了连接销毁不会穿插在事件处理过程中。
-  // 姑且看作是双保险，或者适用于 channel 不放在 TcpConnection 中的情形。
   channel_->tie(shared_from_this());
   channel_->enableReading();
 
