@@ -4,8 +4,10 @@ if [ -z $MSYSTEM ]; then
   rg --files src/nev | xargs clang-format -i
   rg --files include/nev | xargs clang-format -i
   rg --files demos | xargs clang-format -i
+  rg --files examples | xargs clang-format -i
 else
   rg --path-separator '//' --files src/nev | xargs clang-format -i
   rg --path-separator '//' --files include/nev | xargs clang-format -i
   rg --path-separator '//' --files demos | xargs clang-format -i
+  rg --path-separator '//' --files examples | xargs clang-format -i
 fi

@@ -1,4 +1,14 @@
-local chromium_base_dir = "../chromium_base"
+chromium_base_dir = path.getabsolute("../chromium_base")
+
+newoption {
+  trigger = "no-demo",
+  description = "Not build demos"
+}
+
+newoption {
+  trigger = "no-example",
+  description = "Not build examples"
+}
 
 workspace "sln-nev"
   objdir "builddir/obj"
@@ -33,7 +43,7 @@ workspace "sln-nev"
     }
 
     filter { "system:windows", "toolset:gcc" }
-      defines { "CRT_MINGW", "MINGW_HAS_SECURE_API", "_POSIX_C_SOURCE" }
+      defines { "MINGW_HAS_SECURE_API", "_POSIX_C_SOURCE" }
       buildoptions {
         "-std=c++14",
         "-fno-rtti",
@@ -51,7 +61,6 @@ local function demo(prj_name, prj_files)
 
     files(prj_files)
     includedirs {
-      -- "src",
       "include",
       path.join(chromium_base_dir, "src"),
     }
@@ -61,24 +70,53 @@ local function demo(prj_name, prj_files)
     }
 
     filter "system:windows"
-      defines { "CRT_MINGW", "MINGW_HAS_SECURE_API", "_POSIX_C_SOURCE" }
+      defines { "MINGW_HAS_SECURE_API", "_POSIX_C_SOURCE" }
       links { "nev", "chromium_base", "ws2_32", "winmm" }
       linkoptions { "-Wall -static -static-libgcc -static-libstdc++" }
 end
 
 
-demo("test1")
-demo("test2")
-demo("test3")
--- demo("test4")
-demo("test5")
-demo("test6")
-demo("test7")
-demo("test8")
-demo("test9")
-demo("test10")
-demo("test11")
-demo("nev_echo")
--- demo("test12")
-demo("test13")
-demo("nev_httpd")
+function example_project(prj_name, prj_files)
+  project(prj_name)
+    kind "ConsoleApp"
+    language "C++"
+
+    files(prj_files)
+    includedirs {
+      _WORKING_DIR,
+      path.join(_WORKING_DIR, "include"),
+      path.join(chromium_base_dir, "src"),
+    }
+    libdirs {
+      path.join(_WORKING_DIR, "builddir"),
+      path.join(chromium_base_dir, "builddir"),
+    }
+
+    filter "system:windows"
+      defines { "MINGW_HAS_SECURE_API", "_POSIX_C_SOURCE" }
+      links { "nev", "chromium_base", "ws2_32", "winmm" }
+      linkoptions { "-Wall -static -static-libgcc -static-libstdc++" }
+end
+
+
+if not _OPTIONS["no-demo"] then
+  demo("test1")
+  demo("test2")
+  demo("test3")
+  -- demo("test4")
+  demo("test5")
+  demo("test6")
+  demo("test7")
+  demo("test8")
+  demo("test9")
+  demo("test10")
+  demo("test11")
+  demo("nev_echo")
+  -- demo("test12")
+  demo("test13")
+  demo("nev_httpd")
+end
+
+if not _OPTIONS["no-example"] then
+  include("examples")
+end
