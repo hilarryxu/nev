@@ -138,8 +138,21 @@ size_t EventLoop::queueSize() const {
   return pending_functors_.size();
 }
 
+TimerId EventLoop::runAt(base::TimeTicks tm, TimerCallback cb) {
+  double after = 0.1;  // 100ms
+  base::TimeTicks now = base::TimeTicks::Now();
+  if (tm > now) {
+    after = (tm - now).InSecondsF();
+    if (after < 0.1)
+      after = 0.1;
+  }
+  Timer* timer = new Timer(std::move(cb), after, 0.);
+  runInLoop(std::bind(&EventLoop::addTimerInLoop, this, timer));
+  return timer->sequence();
+}
+
 TimerId EventLoop::runAfter(double after, TimerCallback cb) {
-  Timer* timer = new Timer(std::move(cb), after, 0.0);
+  Timer* timer = new Timer(std::move(cb), after, 0.);
   runInLoop(std::bind(&EventLoop::addTimerInLoop, this, timer));
   return timer->sequence();
 }

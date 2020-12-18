@@ -6,6 +6,7 @@
 
 #include "base/synchronization/lock.h"
 #include "base/threading/platform_thread.h"
+#include "base/time/time.h"
 
 #include "nev/nev_export.h"
 #include "nev/non_copyable.h"
@@ -39,10 +40,12 @@ class NEV_EXPORT EventLoop : NonCopyable {
   // Thread safe.
   void queueInLoop(Functor cb);
 
+  // functor 队列大小
   size_t queueSize() const;
 
-  // TODO: runAt
-
+  // 指定时间运行的定时器
+  // Thread safe.
+  TimerId runAt(base::TimeTicks tm, TimerCallback cb);
   // 延迟 after 秒的定时器
   // Thread safe.
   TimerId runAfter(double after, TimerCallback cb);
