@@ -45,8 +45,6 @@ class NEV_EXPORT ThriftConnection
   std::shared_ptr<TNullTransport> null_transport_;
   std::shared_ptr<TMemoryBuffer> input_transport_;
   std::shared_ptr<TMemoryBuffer> output_transport_;
-  std::shared_ptr<TTransport> factory_input_transport_;
-  std::shared_ptr<TTransport> factory_output_transport_;
   std::shared_ptr<TProtocol> input_protocol_;
   std::shared_ptr<TProtocol> output_protocol_;
   std::shared_ptr<TProcessor> processor_;

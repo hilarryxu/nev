@@ -21,15 +21,10 @@ ThriftConnection::ThriftConnection(ThriftServer* server,
   input_transport_.reset(new TMemoryBuffer(nullptr, 0));
   output_transport_.reset(new TMemoryBuffer());
 
-  factory_input_transport_ =
-      server_->getInputTransportFactory()->getTransport(input_transport_);
-  factory_output_transport_ =
-      server_->getOutputTransportFactory()->getTransport(output_transport_);
-
   input_protocol_ =
-      server_->getInputProtocolFactory()->getProtocol(factory_input_transport_);
-  output_protocol_ = server_->getOutputProtocolFactory()->getProtocol(
-      factory_output_transport_);
+      server_->inputProtocolFactory_->getProtocol(input_transport_);
+  output_protocol_ =
+      server_->inputProtocolFactory_->getProtocol(output_transport_);
 
   processor_ =
       server_->getProcessor(input_protocol_, output_protocol_, null_transport_);
@@ -42,7 +37,7 @@ void ThriftConnection::onMessage(const TcpConnectionSharedPtr& conn,
 
   while (more) {
     if (state_ == kExpectFrameSize) {
-      if (buf->readableBytes() >= 4) {
+      if (buf->readableBytes() >= sizeof(int32_t)) {
         frame_size_ = static_cast<uint32_t>(buf->readInt32());
         state_ = kExpectFrame;
       } else {
@@ -57,8 +52,9 @@ void ThriftConnection::onMessage(const TcpConnectionSharedPtr& conn,
         input_transport_->resetBuffer(input_buffer, frame_size_,
                                       TMemoryBuffer::COPY);
         // preserve 4 bytes for |output_transport_|
-        output_transport_->getWritePtr(4);
-        output_transport_->wroteBytes(4);
+        output_transport_->resetBuffer();
+        output_transport_->getWritePtr(sizeof(int32_t));
+        output_transport_->wroteBytes(sizeof(int32_t));
 
         if (server_->hasWorkerThreadPool()) {
           server_->workerThreadPool()->getNextLoop()->queueInLoop(
@@ -86,28 +82,24 @@ void ThriftConnection::process() {
     output_transport_->getBuffer(&buf, &size);
 
     // write frame_size to buf front
-    DCHECK(size >= 4);
-    uint32_t frame_size = static_cast<uint32_t>(htonl(size - 4));
-    memcpy(buf, &frame_size, 4);
+    DCHECK(size >= sizeof(int32_t));
+    uint32_t frame_size = static_cast<uint32_t>(htonl(size - sizeof(int32_t)));
+    memcpy(buf, &frame_size, sizeof(int32_t));
 
     // send response to client
     conn_->send(buf, size);
   } catch (const TTransportException& ex) {
     LOG(ERROR) << "ThriftServer TTransportException: " << ex.what();
-    close();
+    // close();
   } catch (const std::exception& ex) {
     LOG(ERROR) << "ThriftServer std::exception: " << ex.what();
-    close();
+    // close();
   } catch (...) {
     LOG(ERROR) << "ThriftServer unknown exception";
-    close();
+    // close();
   }
 }
 
-void ThriftConnection::close() {
-  null_transport_->close();
-  factory_input_transport_->close();
-  factory_output_transport_->close();
-}
+void ThriftConnection::close() {}
 
 }  // namespace nev
