@@ -9,7 +9,7 @@ namespace nev {
 
 Socket::~Socket() {
   sockets::Close(sockfd_);
-  // FIXME(xcc): 需要 _close(fd_) 不？
+  // TODO(xcc): 需要 _close(fd_) 不？
 }
 
 void Socket::bindAddress(const IPEndPoint& addr) {

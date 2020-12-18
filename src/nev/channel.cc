@@ -46,7 +46,6 @@ Channel::~Channel() {
   LOG(DEBUG) << "Channel::dtor at " << this << " sockfd = " << sockfd_;
   DCHECK(!event_handling_);
 
-  // FIXME(xcc): ensure ev_io_stop?
   DCHECK(ev_is_pending(io_watcher()) == 0);
   DCHECK(ev_is_active(io_watcher()) == 0);
 }

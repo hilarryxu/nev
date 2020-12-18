@@ -72,7 +72,7 @@ void Connector::connect() {
 void Connector::connecting(SocketDescriptor sockfd) {
   setState(kConnecting);
   DCHECK(!channel_);
-  // FIXME(xcc): windows 环境下这个打开的文件描述符需要调用 _close 关闭吗？
+  // TODO(xcc): windows 环境下这个打开的文件描述符需要调用 _close 关闭吗？
   channel_.reset(new Channel(loop_, sockfd, EV_SOCKETDESCRIPTOR_TO_FD(sockfd)));
   channel_->setWriteCallback(std::bind(&Connector::handleWrite, this));
 

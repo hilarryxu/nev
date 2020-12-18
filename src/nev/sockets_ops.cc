@@ -79,7 +79,7 @@ SocketDescriptor sockets::Accept(SocketDescriptor sockfd,
       ::accept(sockfd, storage.addr, &storage.addr_len);
   if (new_socket == kInvalidSocket) {
     int saved_errno = WSAGetLastError();
-    // FIXME(xcc): other errors?
+    // TODO(xcc): other errors?
     if (saved_errno != WSAEWOULDBLOCK)
       LOG(FATAL) << "unexpected error of accept, error " << saved_errno;
   } else {

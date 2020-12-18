@@ -261,7 +261,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len) {
   ssize_t nwrote = 0;
   size_t remaining = len;
 
-  // FIXME(xcc): 严重套接字错误处理
+  // TODO(xcc): 严重套接字错误处理
   if (state_ == kDisconnected) {
     LOG(WARNING) << "disconnected, give up writing";
     return;

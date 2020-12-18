@@ -81,7 +81,7 @@ void TcpServer::newConnection(SocketDescriptor sockfd,
   LOG(INFO) << "TcpServer::newConnection [" << name_ << "] - new connection ["
             << conn_name << "] from " << peer_addr.toString();
 
-  // FIXME(xcc): GetLocalAddr
+  // TODO(xcc): GetLocalAddr
   // IPEndPoint localAddr(sockets::GetLocalAddr(sockfd));
   IPEndPoint local_addr;
   // 主 Reactor 记录 conn，然后下发到一个 subReactor 上去
