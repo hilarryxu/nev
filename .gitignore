@@ -42,5 +42,6 @@
 
 /Makefile
 /*.make
+examples/**/Makefile
 
 builddir/
