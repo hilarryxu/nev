@@ -57,6 +57,7 @@ class NEV_EXPORT EventLoop : NonCopyable {
   void wakeup();
   void updateChannel(Channel* channel);
   void removeChannel(Channel* channel);
+  void destroyTimer(TimerId timer_id);
 
   // 断言当前线程是否为 EventLoop 所在线程
   void assertInLoopThread() {

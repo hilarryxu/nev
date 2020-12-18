@@ -145,14 +145,17 @@ TimerId EventLoop::runAfter(double after, TimerCallback cb) {
 }
 
 TimerId EventLoop::runEvery(double repeat, TimerCallback cb) {
-  Timer* timer = new Timer(std::move(cb), 0.0, repeat);
+  Timer* timer = new Timer(std::move(cb), repeat, repeat);
   runInLoop(std::bind(&EventLoop::addTimerInLoop, this, timer));
   return timer->sequence();
 }
 
 void EventLoop::cancel(TimerId timer_id) {
-  // FIXME(xcc): 是否安全，需要改成 queueInLoop 不？
-  runInLoop(std::bind(&EventLoop::cancelTimerInLoop, this, timer_id));
+  // NOTE: 这里用 queueInLoop 是为了防止一次 loop 循环处理中
+  // A、B 两个定时器同时触发时，A 定时器回调函数中取消了 B 定时器，
+  // 导致 B 定时器回调函数访问的 Timer 对象已被销毁。
+  // 缺点是一定程度上延后了取消动作（因为本来可以立马取消没到期的 C 定时器）。
+  queueInLoop(std::bind(&EventLoop::cancelTimerInLoop, this, timer_id));
 }
 
 // 投递一个 async 事件，唤醒 io_loop。
@@ -189,6 +192,14 @@ void EventLoop::removeChannel(Channel* channel) {
   ev_io_stop(impl_->io_loop_, io_watcher);
 }
 
+void EventLoop::destroyTimer(TimerId timer_id) {
+  assertInLoopThread();
+  // 销毁 Timer
+  size_t n = impl_->timers_.erase(timer_id);
+  (void)n;
+  DCHECK(n == 1);
+}
+
 // static
 EventLoop* EventLoop::Current() {
   return lazy_tls_ptr.Pointer()->Get();
@@ -223,15 +234,14 @@ void EventLoop::addTimerInLoop(Timer* timer) {
   // 存放到 map 中
   impl_->timers_[timer->sequence()] = std::move(timer_ptr);
   // 关联 loop 并启动定时器
-  timer->start(impl_->io_loop_);
+  timer->start(this, impl_->io_loop_);
 }
 
 void EventLoop::cancelTimerInLoop(TimerId timer_id) {
   assertInLoopThread();
   // 从 map 中移除，会调用 Timer 的析构函数，停止定时器。
-  size_t n = impl_->timers_.erase(timer_id);
-  (void)n;
-  DCHECK(n == 1);
+  // 这里不一定找得到，可能已经被取消过。
+  impl_->timers_.erase(timer_id);
 }
 
 void EventLoop::abortNotInLoopThread() {
