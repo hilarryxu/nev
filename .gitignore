@@ -43,5 +43,6 @@
 /Makefile
 /*.make
 examples/**/Makefile
+contrib/**/Makefile
 
 builddir/

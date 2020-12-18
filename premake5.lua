@@ -120,3 +120,5 @@ end
 if not _OPTIONS["no-example"] then
   include("examples")
 end
+
+include("contrib")
