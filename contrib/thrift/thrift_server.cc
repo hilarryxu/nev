@@ -35,7 +35,7 @@ void ThriftServer::setThreadNum(int num_threads) {
   server_.setThreadNum(num_threads);
 }
 
-void ThriftServer::setWokerThreadNum(int num_worker_threads) {
+void ThriftServer::setWorkerThreadNum(int num_worker_threads) {
   DCHECK(num_worker_threads > 0);
   num_worker_threads_ = num_worker_threads;
 }

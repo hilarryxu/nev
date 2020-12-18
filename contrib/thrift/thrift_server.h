@@ -43,7 +43,7 @@ class NEV_EXPORT ThriftServer : NonCopyable, public TServer {
   }
 
   void setThreadNum(int num_threads);
-  void setWokerThreadNum(int num_worker_threads);
+  void setWorkerThreadNum(int num_worker_threads);
 
  private:
   friend class ThriftConnection;

@@ -46,3 +46,7 @@ examples/**/Makefile
 contrib/**/Makefile
 
 builddir/
+.venv/
+
+gen-cpp/
+gen-py/
