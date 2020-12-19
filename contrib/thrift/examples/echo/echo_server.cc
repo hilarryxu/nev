@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
   std::shared_ptr<TProcessor> processor(new EchoProcessor(handler));
 
   ThriftServer server(processor, &loop, listen_addr, "EchoServer");
-  server.setWorkerThreadNum(4);
+  server.setThreadNum(4);
   server.serve();
   loop.loop();
 

@@ -5,7 +5,6 @@
 #include "base/logging.h"
 
 #include "nev/event_loop.h"
-#include "nev/event_loop_thread_pool.h"
 
 #include "contrib/thrift/thrift_server.h"
 
@@ -56,12 +55,7 @@ void ThriftConnection::onMessage(const TcpConnectionSharedPtr& conn,
         output_transport_->getWritePtr(sizeof(int32_t));
         output_transport_->wroteBytes(sizeof(int32_t));
 
-        if (server_->hasWorkerThreadPool()) {
-          server_->workerThreadPool()->getNextLoop()->queueInLoop(
-              std::bind(&ThriftConnection::process, this));
-        } else {
-          process();
-        }
+        process();
 
         buf->retrieve(frame_size_);
         state_ = kExpectFrameSize;
@@ -90,16 +84,11 @@ void ThriftConnection::process() {
     conn_->send(buf, size);
   } catch (const TTransportException& ex) {
     LOG(ERROR) << "ThriftServer TTransportException: " << ex.what();
-    // close();
   } catch (const std::exception& ex) {
     LOG(ERROR) << "ThriftServer std::exception: " << ex.what();
-    // close();
   } catch (...) {
     LOG(ERROR) << "ThriftServer unknown exception";
-    // close();
   }
 }
-
-void ThriftConnection::close() {}
 
 }  // namespace nev

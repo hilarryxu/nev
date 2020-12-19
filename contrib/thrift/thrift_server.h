@@ -23,7 +23,6 @@ using apache::thrift::transport::TTransportFactory;
 namespace nev {
 
 class EventLoop;
-class EventLoopThreadPool;
 
 class NEV_EXPORT ThriftServer : NonCopyable, public TServer {
  public:
@@ -37,13 +36,7 @@ class NEV_EXPORT ThriftServer : NonCopyable, public TServer {
 
   void stop() override;
 
-  bool hasWorkerThreadPool() const { return num_worker_threads_ > 0; }
-  std::shared_ptr<EventLoopThreadPool> workerThreadPool() {
-    return worker_thread_pool_;
-  }
-
   void setThreadNum(int num_threads);
-  void setWorkerThreadNum(int num_worker_threads);
 
  private:
   friend class ThriftConnection;
@@ -53,8 +46,6 @@ class NEV_EXPORT ThriftServer : NonCopyable, public TServer {
   using ConnectionMap = std::map<std::string, ThriftConnectionSharedPtr>;
 
   TcpServer server_;
-  int num_worker_threads_;
-  std::shared_ptr<EventLoopThreadPool> worker_thread_pool_;
   base::Lock connections_lock_;
   ConnectionMap connections_;  // Guarded by connections_lock_
 };

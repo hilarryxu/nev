@@ -37,8 +37,6 @@ class NEV_EXPORT ThriftConnection
 
   void process();
 
-  void close();
-
   ThriftServer* server_;
   TcpConnectionSharedPtr conn_;
 
