@@ -42,7 +42,7 @@ workspace "sln-nev"
       path.join(chromium_base_dir, "builddir"),
     }
 
-    filter { "system:windows", "toolset:gcc" }
+    filter { "system:windows", "action:gmake" }
       defines { "MINGW_HAS_SECURE_API", "_POSIX_C_SOURCE" }
       buildoptions {
         "-std=c++14",

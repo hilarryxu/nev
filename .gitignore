@@ -39,9 +39,12 @@
 *.vcxproj
 *.sln
 
+tags
+.tags
 
 /Makefile
 /*.make
 examples/**/Makefile
+/local_build.sh
 
 builddir/
