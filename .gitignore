@@ -48,3 +48,4 @@ examples/**/Makefile
 /local_build.sh
 
 builddir/
+contrib/thrift/

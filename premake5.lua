@@ -17,11 +17,11 @@ workspace "sln-nev"
 
   configurations { "Debug", "Release" }
 
-  configuration "Debug"
+  filter "configurations:Debug"
      defines { "DEBUG" }
      symbols "On"
 
-  configuration "Release"
+  filter "configurations:Release"
      defines { "NDEBUG" }
      optimize "On"
 
