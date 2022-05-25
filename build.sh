@@ -1,6 +1,6 @@
 #!/bin/sh
 
-BUILD_TYPE=${BUILD_TYPE:-debug}
+BUILD_TYPE=${BUILD_TYPE:-release}
 
 premake5 gmake
-make config=$BUILD_TYPE
+make CC=gcc config=$BUILD_TYPE
